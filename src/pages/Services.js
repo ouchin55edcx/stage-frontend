@@ -1,156 +1,392 @@
 import React, { useState, useEffect } from 'react';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faTrash, faPlus, faSearch, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import styled from 'styled-components';
+import axios from 'axios';
+
+// Styled Components
+const Container = styled.div`
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  color: #333;
+  font-family: 'Segoe UI', sans-serif;
+`;
+
+const MainContent = styled.div`
+  margin-left: 250px;
+  padding: 2rem;
+  flex: 1;
+  min-width: calc(100vw - 250px);
+`;
+
+const ServiceCard = styled.div`
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(26, 115, 232, 0.15);
+  max-width: 1000px;
+  margin: 0 auto;
+`;
+
+const Title = styled.h2`
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(45deg, #1A73E8, #0D47A1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 2rem;
+  text-align: center;
+`;
+
+const FormContainer = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const Form = styled.form`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const Input = styled.input`
+  flex: 1;
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  color: #333;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: #1A73E8;
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+    outline: none;
+  }
+`;
+
+const Button = styled.button`
+  padding: 0.8rem 1.5rem;
+  background: ${props => props.secondary ? '#f0f4f8' : '#1A73E8'};
+  color: ${props => props.secondary ? '#1A73E8' : '#ffffff'};
+  border: ${props => props.secondary ? '1px solid #1A73E8' : 'none'};
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: ${props => props.secondary ? '#e6f0ff' : '#0D47A1'};
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
+const SearchContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const ServicesList = styled.div`
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  max-height: 500px;
+  overflow-y: auto;
+`;
+
+const ServiceItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.15);
+    transform: translateY(-2px);
+  }
+`;
+
+const ServiceName = styled.span`
+  font-weight: 500;
+  color: #333;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 0.8rem;
+`;
+
+const IconButton = styled.button`
+  background: ${props => props.delete ? '#f44336' : '#1A73E8'};
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+`;
+
+const ErrorMessage = styled.div`
+  color: #f44336;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+`;
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  color: #1A73E8;
+`;
 
 const Services = () => {
   const [services, setServices] = useState([]);
-  const [nomServ, setNomServ] = useState('');
+  const [name, setName] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [editingService, setEditingService] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
 
-  // Charger les services
+  // API base URL
+  const API_URL = 'http://localhost:8080/api';
+
+  // Create axios instance with auth token
+  const api = axios.create({
+    baseURL: API_URL,
+  });
+
+  // Add request interceptor to add auth token
+  api.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+
+  // Load services on component mount
   useEffect(() => {
     fetchServices();
   }, []);
 
+  // Fetch all services
   const fetchServices = async () => {
-    const response = await fetch('/api/services');
-    const data = await response.json();
-    setServices(data);
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await api.get('/services');
+      setServices(response.data.services || []);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      setError('Erreur lors du chargement des services. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Handle form submission (create or update)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!nomServ) {
-      alert("Le nom du service est requis");
+
+    if (!name.trim()) {
+      setError("Le nom du service est requis");
       return;
     }
 
-    const method = editingService ? 'PUT' : 'POST';
-    const url = editingService ? `/api/services/${editingService.id}` : '/api/services';
+    setLoading(true);
+    setError('');
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom_serv: nomServ })
-      });
-
-      if (response.ok) {
-        fetchServices();
-        setNomServ('');
-        setEditingService(null);
+      if (editingService) {
+        // Update existing service
+        await api.put(`/services/${editingService.id}`, { name });
+      } else {
+        // Create new service
+        await api.post('/services', { name });
       }
+
+      // Reset form and refresh list
+      setName('');
+      setEditingService(null);
+      fetchServices();
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Error saving service:', error);
+      setError('Erreur lors de l\'enregistrement du service. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Handle edit button click
   const handleEdit = (service) => {
     setEditingService(service);
-    setNomServ(service.nom_serv);
+    setName(service.name);
   };
 
+  // Handle delete button click
   const handleDelete = async (id) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce service ?")) {
-      const response = await fetch(`/api/services/${id}`, { method: 'DELETE' });
-      if (response.ok) fetchServices();
+      setLoading(true);
+      setError('');
+
+      try {
+        await api.delete(`/services/${id}`);
+        fetchServices();
+      } catch (error) {
+        console.error('Error deleting service:', error);
+        setError('Erreur lors de la suppression du service. Veuillez réessayer.');
+      } finally {
+        setLoading(false);
+      }
     }
+  };
+
+  // Handle search
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      fetchServices();
+      return;
+    }
+
+    setSearchLoading(true);
+    setError('');
+
+    try {
+      const response = await api.post('/services/search', { name: searchTerm });
+      setServices(response.data.services || []);
+    } catch (error) {
+      console.error('Error searching services:', error);
+      setError('Erreur lors de la recherche des services. Veuillez réessayer.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Reset search and show all services
+  const resetSearch = () => {
+    setSearchTerm('');
+    fetchServices();
   };
 
   return (
-    <div style={{ display: 'flex', backgroundColor: 'white', minHeight: '100vh' }}> {/* Fond blanc ici */}
+    <Container>
       <Menu />
 
-      <div style={{
-        padding: '2rem',
-        maxWidth: '900px',
-        margin: 'auto',
-        background: '#E6F7FF', // Fond bleu clair moderne
-        borderRadius: '10px',
-        flex: 1,
-        color: '#1A73E8', // Texte bleu moderne
-      }}>
-        <h2 style={{ color: '#1A73E8', marginBottom: '1rem' }}>Gestion des Services</h2>
+      <MainContent>
+        <ServiceCard>
+          <Title>Gestion des Services</Title>
 
-        {/* Formulaire d'ajout/modification */}
-        <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <input
-              type="text"
-              value={nomServ}
-              onChange={(e) => setNomServ(e.target.value)}
-              placeholder="Nom du service"
-              style={{
-                flex: 1,
-                padding: '0.8rem',
-                borderRadius: '8px',
-                border: '1px solid #1A73E8', // Bordure bleue moderne
-                background: '#E6F7FF', // Fond bleu clair
-                color: '#1A73E8', // Texte bleu moderne
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: '0.7rem 1.5rem',
-                background: '#1A73E8', // Bouton bleu moderne
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              <FontAwesomeIcon icon={faPlus} /> {editingService ? 'Modifier' : 'Ajouter'}
-            </button>
-          </div>
-        </form>
-
-        {/* Liste des services */}
-        <div style={{ background: '#E6F7FF', borderRadius: '8px', padding: '1rem' }}>
-          {services.map((service) => (
-            <div key={service.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '1rem',
-              marginBottom: '0.5rem',
-              background: '#F0F8FF', // Fond bleu plus clair
-              borderRadius: '8px'
-            }}>
-              <span>{service.nom_serv}</span>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button
-                  onClick={() => handleEdit(service)}
-                  style={{
-                    background: '#1A73E8',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '0.5rem',
-                    cursor: 'pointer'
+          {/* Form for adding/editing services */}
+          <FormContainer>
+            <Form onSubmit={handleSubmit}>
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nom du service"
+                disabled={loading}
+              />
+              <Button type="submit" disabled={loading}>
+                {loading ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faPlus} />}
+                {editingService ? 'Modifier' : 'Ajouter'}
+              </Button>
+              {editingService && (
+                <Button
+                  type="button"
+                  secondary
+                  onClick={() => {
+                    setEditingService(null);
+                    setName('');
                   }}
                 >
-                  <FontAwesomeIcon icon={faEdit} color="white" />
-                </button>
-                <button
-                  onClick={() => handleDelete(service.id)}
-                  style={{
-                    background: '#444',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '0.5rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <FontAwesomeIcon icon={faTrash} color="white" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+                  Annuler
+                </Button>
+              )}
+            </Form>
+
+            {/* Search functionality */}
+            <SearchContainer>
+              <Input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher un service..."
+                disabled={searchLoading}
+              />
+              <Button type="button" onClick={handleSearch} disabled={searchLoading}>
+                {searchLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faSearch} />}
+                Rechercher
+              </Button>
+              {searchTerm && (
+                <Button type="button" secondary onClick={resetSearch}>
+                  Réinitialiser
+                </Button>
+              )}
+            </SearchContainer>
+
+            {error && <ErrorMessage>{error}</ErrorMessage>}
+          </FormContainer>
+
+          {/* Services list */}
+          <ServicesList>
+            {loading ? (
+              <LoadingSpinner>
+                <FontAwesomeIcon icon={faSpinner} spin size="2x" />
+              </LoadingSpinner>
+            ) : services.length > 0 ? (
+              services.map((service) => (
+                <ServiceItem key={service.id}>
+                  <ServiceName>{service.name}</ServiceName>
+                  <ActionButtons>
+                    <IconButton onClick={() => handleEdit(service)}>
+                      <FontAwesomeIcon icon={faEdit} />
+                    </IconButton>
+                    <IconButton delete onClick={() => handleDelete(service.id)}>
+                      <FontAwesomeIcon icon={faTrash} />
+                    </IconButton>
+                  </ActionButtons>
+                </ServiceItem>
+              ))
+            ) : (
+              <EmptyState>Aucun service trouvé</EmptyState>
+            )}
+          </ServicesList>
+        </ServiceCard>
+      </MainContent>
+    </Container>
   );
 };
 
