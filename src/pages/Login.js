@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { loginUser } from '../services/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -19,19 +19,20 @@ const Login = () => {
     setError('');
 
     try {
-      const res = await axios.post('http://localhost:8000/api/login', {
-        email,
-        password,
-        role: selectedRole
-      });
-
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('role', res.data.role);
-      localStorage.setItem('email', res.data.email);
-
-      navigate(res.data.role === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erreur de connexion');
+      const response = await loginUser(email, password);
+      
+      // Store user info in localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('role', response.role);
+      localStorage.setItem('email', response.user.email);
+      localStorage.setItem('userId', response.user.id);
+      localStorage.setItem('fullName', response.user.full_name);
+      
+      // Redirect based on role
+      navigate(response.role.toLowerCase() === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Email ou mot de passe incorrect');
     } finally {
       setLoading(false);
     }
