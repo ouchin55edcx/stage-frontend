@@ -3,7 +3,7 @@ import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrash, faPlus, faSearch, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import styled from 'styled-components';
-import axios from 'axios';
+import { fetchAllServices, createService, updateService, deleteService, searchServices } from '../services/service';
 
 // Styled Components
 const Container = styled.div`
@@ -176,26 +176,6 @@ const Services = () => {
   const [error, setError] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // API base URL
-  const API_URL = 'http://localhost:8080/api';
-
-  // Create axios instance with auth token
-  const api = axios.create({
-    baseURL: API_URL,
-  });
-
-  // Add request interceptor to add auth token
-  api.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
-
   // Load services on component mount
   useEffect(() => {
     fetchServices();
@@ -205,10 +185,9 @@ const Services = () => {
   const fetchServices = async () => {
     setLoading(true);
     setError('');
-
     try {
-      const response = await api.get('/services');
-      setServices(response.data.services || []);
+      const data = await fetchAllServices();
+      setServices(data);
     } catch (error) {
       console.error('Error fetching services:', error);
       setError('Erreur lors du chargement des services. Veuillez réessayer.');
@@ -232,10 +211,10 @@ const Services = () => {
     try {
       if (editingService) {
         // Update existing service
-        await api.put(`/services/${editingService.id}`, { name });
+        await updateService(editingService.id, name);
       } else {
         // Create new service
-        await api.post('/services', { name });
+        await createService(name);
       }
 
       // Reset form and refresh list
@@ -263,7 +242,7 @@ const Services = () => {
       setError('');
 
       try {
-        await api.delete(`/services/${id}`);
+        await deleteService(id);
         fetchServices();
       } catch (error) {
         console.error('Error deleting service:', error);
@@ -285,8 +264,8 @@ const Services = () => {
     setError('');
 
     try {
-      const response = await api.post('/services/search', { name: searchTerm });
-      setServices(response.data.services || []);
+      const data = await searchServices(searchTerm);
+      setServices(data);
     } catch (error) {
       console.error('Error searching services:', error);
       setError('Erreur lors de la recherche des services. Veuillez réessayer.');

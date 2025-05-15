@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { fetchEmployers } from '../services/employer';
 
 const Container = styled.div`
   display: flex;
@@ -95,28 +96,25 @@ function UsersList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Simulation de données
-    const mockUsers = [
-      {
-        id: 1,
-        nom: 'Ahmed Ben Salah',
-        email: 'ahmed.salah@example.com',
-        poste: 'Développeur',
-        tele: '+212 6 12 34 56 78',
-        role: 'admin',
-        service_id: 1
-      },
-      {
-        id: 2,
-        nom: 'Sara Alami',
-        email: 'sara.alami@example.com',
-        poste: 'Technicien',
-        tele: '+212 6 23 45 67 89',
-        role: 'employe',
-        service_id: 2
+    const loadEmployers = async () => {
+      try {
+        const data = await fetchEmployers();
+        setUsers(
+          data.map(emp => ({
+            id: emp.id,
+            nom: emp.full_name,
+            email: emp.email,
+            poste: emp.poste,
+            tele: emp.phone,
+            role: 'employe', // or emp.role if available
+            service_id: emp.service_id
+          }))
+        );
+      } catch (err) {
+        // Optionally handle error, e.g. show notification
       }
-    ];
-    setUsers(mockUsers);
+    };
+    loadEmployers();
   }, []);
 
   const handleDelete = (id) => {
