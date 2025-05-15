@@ -124,12 +124,29 @@ function EquipementList() {
   const fetchEquipments = async () => {
     try {
       setLoading(true);
-      const response = await getAllEquipments();
-      setEquipements(response.data);
+      const data = await getAllEquipments();
+      console.log('Equipment data:', data); // Debug log
+
+      // Ensure we're setting an array
+      if (Array.isArray(data)) {
+        setEquipements(data);
+      } else if (data && typeof data === 'object') {
+        // If it's an object with a data property that's an array
+        if (data.data && Array.isArray(data.data)) {
+          setEquipements(data.data);
+        } else {
+          // If it's a single equipment object, wrap it in an array
+          setEquipements(data.id ? [data] : []);
+        }
+      } else {
+        setEquipements([]);
+      }
+
       setError(null);
     } catch (err) {
       console.error('Error fetching equipments:', err);
       setError('Failed to fetch equipments');
+      setEquipements([]); // Set empty array to prevent map errors
     } finally {
       setLoading(false);
     }
@@ -227,10 +244,10 @@ function EquipementList() {
               </TableRow>
             </TableHeader>
             <tbody>
-              {equipements.map(equipement => (
+              {Array.isArray(equipements) && equipements.map(equipement => (
                 <TableRow key={equipement.id}>
-                  <TableCell>{equipement.name}</TableCell>
-                  <TableCell>{equipement.type}</TableCell>
+                  <TableCell>{equipement.name || 'N/A'}</TableCell>
+                  <TableCell>{equipement.type || 'N/A'}</TableCell>
                   <TableCell>
                     <span style={{
                       color: getStatusColor(equipement.status),
@@ -242,13 +259,13 @@ function EquipementList() {
                       {getStatusLabel(equipement.status)}
                     </span>
                   </TableCell>
-                  <TableCell>{equipement.serial_number}</TableCell>
-                  <TableCell>{equipement.brand}</TableCell>
-                  <TableCell>{equipement.label}</TableCell>
-                  <TableCell>{equipement.nsc}</TableCell>
-                  <TableCell>{equipement.ip_address}</TableCell>
-                  <TableCell>{equipement.processor}</TableCell>
-                  <TableCell>{equipement.office_version}</TableCell>
+                  <TableCell>{equipement.serial_number || 'N/A'}</TableCell>
+                  <TableCell>{equipement.brand || 'N/A'}</TableCell>
+                  <TableCell>{equipement.label || 'N/A'}</TableCell>
+                  <TableCell>{equipement.nsc || 'N/A'}</TableCell>
+                  <TableCell>{equipement.ip_address || 'N/A'}</TableCell>
+                  <TableCell>{equipement.processor || 'N/A'}</TableCell>
+                  <TableCell>{equipement.office_version || 'N/A'}</TableCell>
                   <TableCell>{equipement.backup_enabled ? 'Oui' : 'Non'}</TableCell>
                   <TableCell>{getUserInfo(equipement.employer)}</TableCell>
                   <TableCell>
@@ -265,7 +282,7 @@ function EquipementList() {
                   </TableCell>
                 </TableRow>
               ))}
-              {equipements.length === 0 && !loading && (
+              {(!Array.isArray(equipements) || equipements.length === 0) && !loading && (
                 <TableRow>
                   <TableCell colSpan="13" style={{ textAlign: 'center', padding: '2rem' }}>
                     Aucun équipement trouvé

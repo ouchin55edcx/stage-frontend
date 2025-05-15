@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import styled from 'styled-components';
 import Menu from './Menu';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import { FaEdit, FaTrashAlt } from 'react-icons/fa'; // Import FontAwesome icons
+import { fetchInterventions, deleteIntervention } from '../services/intervention';
+import { getAllEquipments } from '../services/equipment';
 
 const Container = styled.div`
   display: flex;
@@ -91,45 +92,40 @@ const ActionButton = styled.button`
 function InterventionsList() {
   const [interventions, setInterventions] = useState([]);
   const [equipements, setEquipements] = useState([]);
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchInterventions();
-    fetchEquipements();
-
-    const testIntervention = {
-      id: 9999,
-      dateIntervention: new Date().toISOString(),
-      nomInter: 'Technicien Test',
-      equipmentId: 1,
-      note: 'Ceci est une intervention test.'
-    };
-    setInterventions(prev => [...prev, testIntervention]);
+    fetchInterventionsData();
+    fetchEquipementsData();
   }, []);
 
-  const fetchInterventions = () => {
-    axios.get('/api/interventions')
-      .then(response => setInterventions(prev => [...prev, ...response.data]))
-      .catch(error => console.error('Erreur:', error));
-  };
-
-  const fetchEquipements = () => {
-    axios.get('/api/equipements')
-      .then(response => setEquipements(response.data))
-      .catch(error => console.error('Erreur:', error));
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm('Supprimer cette intervention ?')) {
-      axios.delete(`/api/interventions/${id}`)
-        .then(() => fetchInterventions())
-        .catch(error => console.error('Erreur:', error));
+  const fetchInterventionsData = async () => {
+    try {
+      const data = await fetchInterventions();
+      setInterventions(data);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des interventions:', error);
     }
   };
 
-  const getEquipmentName = (equipmentId) => {
-    const equipment = equipements.find(e => e.id === equipmentId);
-    return equipment ? equipment.nom : 'Équipement inconnu';
+  const fetchEquipementsData = async () => {
+    try {
+      const data = await getAllEquipments();
+      setEquipements(data);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des équipements:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Supprimer cette intervention ?')) {
+      try {
+        await deleteIntervention(id);
+        fetchInterventionsData();
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+      }
+    }
   };
 
   const handleEdit = (id) => {
@@ -139,28 +135,28 @@ function InterventionsList() {
   return (
     <Container>
       <Menu notifications={[]} />
-      
+
       <MainContent>
         <ListContainer>
           <Title>Liste des Interventions</Title>
-          
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Date</TableHeaderCell>
-                <TableHeaderCell>Intervenant</TableHeaderCell>
+                <TableHeaderCell>Technicien</TableHeaderCell>
                 <TableHeaderCell>Équipement</TableHeaderCell>
                 <TableHeaderCell>Note</TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
-            
+
             <tbody>
               {interventions.map(intervention => (
                 <TableRow key={intervention.id}>
-                  <TableCell>{new Date(intervention.dateIntervention).toLocaleDateString()}</TableCell>
-                  <TableCell>{intervention.nomInter}</TableCell>
-                  <TableCell>{getEquipmentName(intervention.equipmentId)}</TableCell>
+                  <TableCell>{new Date(intervention.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{intervention.technician_name}</TableCell>
+                  <TableCell>{intervention.equipment ? intervention.equipment.name : 'Équipement inconnu'}</TableCell>
                   <TableCell style={{ maxWidth: '300px', whiteSpace: 'pre-wrap' }}>
                     {intervention.note}
                   </TableCell>

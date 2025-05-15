@@ -22,7 +22,27 @@ api.interceptors.request.use(
 const getAllEquipments = async () => {
     try {
         const response = await api.get('/equipments');
-        return response.data;
+
+        // Ensure we return an array
+        if (Array.isArray(response.data)) {
+            return response.data;
+        } else if (response.data && typeof response.data === 'object') {
+            // Check if there's an array property in the response
+            const possibleArrays = Object.entries(response.data)
+                .filter(([key, value]) => Array.isArray(value))
+                .map(([key, value]) => value);
+
+            if (possibleArrays.length > 0) {
+                return possibleArrays[0]; // Return the first array found
+            } else if (response.data.id) {
+                // If it's a single equipment object, wrap it in an array
+                return [response.data];
+            }
+        }
+
+        // Default to empty array if no valid data found
+        console.warn('No equipment data found in response, returning empty array');
+        return [];
     } catch (error) {
         if (error.response) {
             throw new Error(error.response.data.message || 'Server responded with an error');
