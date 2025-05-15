@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import Menu from './Menu';
+import { getLicenseById, updateLicense } from '../services/license';
 
 const Container = styled.div`
   display: flex;
@@ -48,7 +49,7 @@ const SubmitButton = styled.button`
   cursor: pointer;
   font-weight: bold;
   transition: all 0.3s;
-  
+
   &:hover {
     background-color: #4682B4;  /* Couleur bleue plus foncée au survol */
   }
@@ -56,70 +57,116 @@ const SubmitButton = styled.button`
 
 const EditLicence = () => {
   const { id } = useParams(); // Récupération de l'ID de la licence depuis l'URL
-  const [licence, setLicence] = useState(null);
-  const navigate = useNavigate(); // Remplacer useHistory par useNavigate
+  const [license, setLicense] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Récupérer la licence en fonction de l'ID (simulé ici)
-    const fetchedLicence = {
-      _id: id,
-      nom: 'Licence Windows 10',
-      type: 'Système d\'exploitation',
-      cle: 'XYZ123ABC',
-      date_expiration: '2025-12-31',
+    const fetchLicense = async () => {
+      try {
+        setLoading(true);
+        const data = await getLicenseById(id);
+        setLicense(data);
+      } catch (err) {
+        console.error('Error fetching license:', err);
+        setError('Erreur lors du chargement de la licence: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
     };
-    setLicence(fetchedLicence);
+
+    fetchLicense();
   }, [id]);
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    // Logique pour sauvegarder les modifications de la licence
-    alert('Licence modifiée avec succès!');
-    navigate('/licences'); // Retour à la liste des licences après modification
+    try {
+      setSaving(true);
+      await updateLicense(id, license);
+      alert('Licence modifiée avec succès!');
+      navigate('/admin/licences/list'); // Retour à la liste des licences après modification
+    } catch (err) {
+      console.error('Error updating license:', err);
+      setError('Erreur lors de la mise à jour: ' + err.message);
+      alert('Erreur lors de la mise à jour: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!licence) {
-    return <p>Chargement...</p>;
+  if (loading) {
+    return (
+      <Container>
+        <Menu />
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Chargement de la licence...</div>
+      </Container>
+    );
+  }
+
+  if (error && !license) {
+    return (
+      <Container>
+        <Menu />
+        <div style={{ color: 'red', textAlign: 'center', padding: '2rem' }}>{error}</div>
+      </Container>
+    );
+  }
+
+  if (!license) {
+    return (
+      <Container>
+        <Menu />
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Licence non trouvée</div>
+      </Container>
+    );
   }
 
   return (
     <Container>
       <Menu />
       <Title>Modifier la Licence</Title>
+      {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
       <Form onSubmit={handleSave}>
         <label>Nom :</label>
-        <Input 
-          type="text" 
-          name="nom" 
-          value={licence.nom} 
-          onChange={(e) => setLicence({...licence, nom: e.target.value})} 
+        <Input
+          type="text"
+          name="name"
+          value={license.name}
+          onChange={(e) => setLicense({...license, name: e.target.value})}
         />
-        
+
         <label>Type :</label>
-        <Input 
-          type="text" 
-          name="type" 
-          value={licence.type} 
-          onChange={(e) => setLicence({...licence, type: e.target.value})} 
+        <Input
+          type="text"
+          name="type"
+          value={license.type}
+          onChange={(e) => setLicense({...license, type: e.target.value})}
         />
 
         <label>Clé :</label>
-        <Input 
-          type="text" 
-          name="cle" 
-          value={licence.cle} 
-          onChange={(e) => setLicence({...licence, cle: e.target.value})} 
+        <Input
+          type="text"
+          name="key"
+          value={license.key}
+          onChange={(e) => setLicense({...license, key: e.target.value})}
         />
 
         <label>Date d'expiration :</label>
-        <Input 
-          type="date" 
-          name="date_expiration" 
-          value={licence.date_expiration} 
-          onChange={(e) => setLicence({...licence, date_expiration: e.target.value})} 
+        <Input
+          type="date"
+          name="expiration_date"
+          value={license.expiration_date}
+          onChange={(e) => setLicense({...license, expiration_date: e.target.value})}
         />
 
-        <SubmitButton type="submit">Sauvegarder</SubmitButton>
+        <SubmitButton
+          type="submit"
+          disabled={saving}
+        >
+          {saving ? 'Enregistrement...' : 'Sauvegarder'}
+        </SubmitButton>
       </Form>
     </Container>
   );

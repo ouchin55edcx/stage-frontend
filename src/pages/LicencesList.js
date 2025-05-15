@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FaEdit, FaTrash } from 'react-icons/fa'; // Importation des icônes
 import { useNavigate } from 'react-router-dom'; // Remplacer useHistory par useNavigate
 import Menu from './Menu';
+import { fetchLicenses, deleteLicense } from '../services/license';
 
 const Container = styled.div`
   display: flex;
@@ -86,42 +87,44 @@ const ActionButton = styled.button`
 `;
 
 const LicencesList = () => {
-  // Liste des licences exemple
-  const [licences, setLicences] = useState([
-    {
-      _id: '1',
-      nom: 'Licence Windows 10',
-      type: 'Système d\'exploitation',
-      cle: 'XYZ123ABC',
-      date_expiration: '2025-12-31',
-    },
-    {
-      _id: '2',
-      nom: 'Licence Microsoft Office',
-      type: 'Logiciel',
-      cle: 'ABC987XYZ',
-      date_expiration: '2026-06-30',
-    },
-    {
-      _id: '3',
-      nom: 'Licence Adobe Photoshop',
-      type: 'Logiciel',
-      cle: 'PHOT1234AB',
-      date_expiration: '2027-03-15',
-    },
-  ]);
+  const [licenses, setLicenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const navigate = useNavigate(); // Hook pour la navigation avec useNavigate
+
+  useEffect(() => {
+    const getLicenses = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchLicenses();
+        setLicenses(data);
+      } catch (err) {
+        console.error('Error fetching licenses:', err);
+        setError('Erreur lors du chargement des licences: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getLicenses();
+  }, []);
 
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('fr-FR', options);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette licence ?')) {
-      setLicences(licences.filter(licence => licence._id !== id));
-      alert('Licence supprimée avec succès !');
+      try {
+        await deleteLicense(id);
+        setLicenses(licenses.filter(license => license.id !== id));
+        alert('Licence supprimée avec succès !');
+      } catch (err) {
+        console.error('Error deleting license:', err);
+        alert('Erreur lors de la suppression: ' + err.message);
+      }
     }
   };
 
@@ -136,37 +139,49 @@ const LicencesList = () => {
       <MainContent>
         <ListContainer>
           <Title>Liste des Licences</Title>
-          
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Nom</TableHeaderCell>
-                <TableHeaderCell>Type</TableHeaderCell>
-                <TableHeaderCell>Clé</TableHeaderCell>
-                <TableHeaderCell>Date d'expiration</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            
-            <tbody>
-              {licences.map((licence) => (
-                <TableRow key={licence._id}>
-                  <TableCell>{licence.nom}</TableCell>
-                  <TableCell>{licence.type}</TableCell>
-                  <TableCell>{licence.cle}</TableCell>
-                  <TableCell>{formatDate(licence.date_expiration)}</TableCell>
-                  <TableCell>
-                    <ActionButton onClick={() => handleEdit(licence._id)}>
-                      <FaEdit /> {/* Icône de modification */}
-                    </ActionButton>
-                    <ActionButton delete onClick={() => handleDelete(licence._id)}>
-                      <FaTrash /> {/* Icône de suppression */}
-                    </ActionButton>
-                  </TableCell>
+
+          {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>Chargement des licences...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell>Nom</TableHeaderCell>
+                  <TableHeaderCell>Type</TableHeaderCell>
+                  <TableHeaderCell>Clé</TableHeaderCell>
+                  <TableHeaderCell>Date d'expiration</TableHeaderCell>
+                  <TableHeaderCell>Actions</TableHeaderCell>
                 </TableRow>
-              ))}
-            </tbody>
-          </Table>
+              </TableHeader>
+
+              <tbody>
+                {licenses.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan="5" style={{ textAlign: 'center' }}>Aucune licence trouvée</TableCell>
+                  </TableRow>
+                ) : (
+                  licenses.map((license) => (
+                    <TableRow key={license.id}>
+                      <TableCell>{license.name}</TableCell>
+                      <TableCell>{license.type}</TableCell>
+                      <TableCell>{license.key}</TableCell>
+                      <TableCell>{formatDate(license.expiration_date)}</TableCell>
+                      <TableCell>
+                        <ActionButton onClick={() => handleEdit(license.id)}>
+                          <FaEdit /> {/* Icône de modification */}
+                        </ActionButton>
+                        <ActionButton delete onClick={() => handleDelete(license.id)}>
+                          <FaTrash /> {/* Icône de suppression */}
+                        </ActionButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </tbody>
+            </Table>
+          )}
         </ListContainer>
       </MainContent>
     </Container>

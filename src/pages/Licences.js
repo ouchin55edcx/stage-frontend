@@ -1,41 +1,47 @@
 // src/pages/Licences.js
 import React, { useState } from 'react';
 import Menu from './Menu';
+import { createLicense } from '../services/license';
+import { useNavigate } from 'react-router-dom';
 
 const Licences = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    nom: '',
+    name: '',
     type: '',
-    cle: '',
-    date_expiration: ''
+    key: '',
+    expiration_date: ''
   });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
 
-    fetch('http://localhost:5000/api/licences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
-    })
-      .then(res => res.json())
-      .then(data => {
-        alert('Licence ajoutée avec succès !');
-        setFormData({
-          nom: '',
-          type: '',
-          cle: '',
-          date_expiration: ''
-        });
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Erreur lors de l'ajout !");
+    try {
+      await createLicense(formData);
+      alert('Licence ajoutée avec succès !');
+      setFormData({
+        name: '',
+        type: '',
+        key: '',
+        expiration_date: ''
       });
+      // Redirect to licenses list
+      navigate('/admin/licences/list');
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Erreur lors de l'ajout de la licence");
+      alert("Erreur lors de l'ajout : " + (err.message || "Une erreur est survenue"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const styles = {
@@ -100,12 +106,13 @@ const Licences = () => {
       <Menu />
       <div style={styles.content}>
         <h2 style={styles.title}>Ajouter une licence</h2>
+        {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
         <form style={styles.form} onSubmit={handleSubmit}>
           <label style={styles.label}>Nom :</label>
           <input
             type="text"
-            name="nom"
-            value={formData.nom}
+            name="name"
+            value={formData.name}
             onChange={handleChange}
             style={styles.input}
             required
@@ -124,8 +131,8 @@ const Licences = () => {
           <label style={styles.label}>Clé :</label>
           <input
             type="text"
-            name="cle"
-            value={formData.cle}
+            name="key"
+            value={formData.key}
             onChange={handleChange}
             style={styles.input}
             required
@@ -134,14 +141,20 @@ const Licences = () => {
           <label style={styles.label}>Date d'expiration :</label>
           <input
             type="date"
-            name="date_expiration"
-            value={formData.date_expiration}
+            name="expiration_date"
+            value={formData.expiration_date}
             onChange={handleChange}
             style={styles.input}
             required
           />
 
-          <button type="submit" style={styles.button}>Ajouter</button>
+          <button
+            type="submit"
+            style={styles.button}
+            disabled={loading}
+          >
+            {loading ? 'Ajout en cours...' : 'Ajouter'}
+          </button>
         </form>
       </div>
     </div>
