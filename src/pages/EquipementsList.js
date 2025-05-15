@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-// eslint-disable-next-line no-unused-vars
-import axios from 'axios';
 import styled from 'styled-components';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faTrashAlt, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { getAllEquipments, deleteEquipment } from '../services/equipment';
+import { useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   display: flex;
@@ -93,47 +93,109 @@ const ActionButton = styled.button`
   }
 `;
 
+const AddButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.8rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(45deg, #00aaff, #005f99);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  }
+`;
+
 function EquipementList() {
+  const navigate = useNavigate();
   const [equipements, setEquipements] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    // Exemple d'équipement pour test local sans backend
-    setEquipements([{
-      id: 1,
-      nom: 'PC Bureau',
-      type: 'PC',
-      etat: 'actif',
-      numero_serie: 'SN123456789',
-      marque: 'Dell',
-      libelle: 'Ordinateur principal',
-      ecran: '24 pouces',
-      nce: 'NCE-001',
-      adresse_ip: '192.168.1.10',
-      processeur: 'Intel Core i7',
-      office: 'Office 2019',
-      sauvegarde: 'Oui',
-      user_id: 1
-    }]);
-
-
-    setUsers([{
-      id: 1,
-      nom: 'Ahmed El Amrani',
-      role: 'Technicien'
-    }]);
-  }, []);
-
-  const handleDelete = (id) => {
-    if (window.confirm('Supprimer cet équipement ?')) {
-      setEquipements(prev => prev.filter(e => e.id !== id));
+  const fetchEquipments = async () => {
+    try {
+      setLoading(true);
+      const response = await getAllEquipments();
+      setEquipements(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching equipments:', err);
+      setError('Failed to fetch equipments');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getUserName = (userId) => {
-    const user = users.find(user => user.id === userId);
-    return user ? `${user.nom} (${user.role})` : 'Non attribué';
+  useEffect(() => {
+    fetchEquipments();
+  }, []);
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet équipement ?')) {
+      try {
+        setIsDeleting(true);
+        await deleteEquipment(id);
+        // Refresh the list after successful deletion
+        await fetchEquipments();
+        alert('Équipement supprimé avec succès');
+      } catch (error) {
+        console.error('Error deleting equipment:', error);
+        alert(`Erreur lors de la suppression: ${error.message}`);
+      } finally {
+        setIsDeleting(false);
+      }
+    }
   };
+
+  const handleEdit = (id) => {
+    navigate(`/equipements/edit/${id}`);
+  };
+
+  const handleAdd = () => {
+    navigate('/equipements/add');
+  };
+
+  const getUserInfo = (employer) => {
+    return employer ? `${employer.poste} (${employer.phone})` : 'Non attribué';
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active':
+        return '#28a745'; // Green
+      case 'on_hold':
+        return '#ffc107'; // Yellow
+      case 'in_progress':
+        return '#17a2b8'; // Blue
+      default:
+        return '#6c757d'; // Gray
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'active':
+        return 'Actif';
+      case 'on_hold':
+        return 'En attente';
+      case 'in_progress':
+        return 'En cours';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) return <MainContent><ListContainer><Title>Loading...</Title></ListContainer></MainContent>;
+  if (error) return <MainContent><ListContainer><Title>{error}</Title></ListContainer></MainContent>;
 
   return (
     <Container>
@@ -141,6 +203,11 @@ function EquipementList() {
       <MainContent>
         <ListContainer>
           <Title>Liste des équipements</Title>
+
+          <AddButton onClick={handleAdd}>
+            <FontAwesomeIcon icon={faPlus} /> Ajouter un équipement
+          </AddButton>
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -150,50 +217,61 @@ function EquipementList() {
                 <TableHeaderCell>Numéro Série</TableHeaderCell>
                 <TableHeaderCell>Marque</TableHeaderCell>
                 <TableHeaderCell>Libellé</TableHeaderCell>
-                <TableHeaderCell>Écran</TableHeaderCell>
-                <TableHeaderCell>NCE</TableHeaderCell>
+                <TableHeaderCell>NSC</TableHeaderCell>
                 <TableHeaderCell>Adresse IP</TableHeaderCell>
                 <TableHeaderCell>Processeur</TableHeaderCell>
                 <TableHeaderCell>Office</TableHeaderCell>
                 <TableHeaderCell>Sauvegarde</TableHeaderCell>
-                <TableHeaderCell>Utilisateur</TableHeaderCell>
+                <TableHeaderCell>Employé</TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <tbody>
               {equipements.map(equipement => (
                 <TableRow key={equipement.id}>
-                  <TableCell>{equipement.nom}</TableCell>
+                  <TableCell>{equipement.name}</TableCell>
                   <TableCell>{equipement.type}</TableCell>
                   <TableCell>
                     <span style={{
-                      color: equipement.etat === 'actif' ? '#28a745' :
-                             equipement.etat === 'en_panne' ? '#dc3545' : '#ffc107',
-                      fontWeight: '500'
+                      color: getStatusColor(equipement.status),
+                      fontWeight: '500',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: `${getStatusColor(equipement.status)}20`
                     }}>
-                      {equipement.etat}
+                      {getStatusLabel(equipement.status)}
                     </span>
                   </TableCell>
-                  <TableCell>{equipement.numero_serie}</TableCell>
-                  <TableCell>{equipement.marque}</TableCell>
-                  <TableCell>{equipement.libelle}</TableCell>
-                  <TableCell>{equipement.ecran}</TableCell>
-                  <TableCell>{equipement.nce}</TableCell>
-                  <TableCell>{equipement.adresse_ip}</TableCell>
-                  <TableCell>{equipement.processeur}</TableCell>
-                  <TableCell>{equipement.office}</TableCell>
-                  <TableCell>{equipement.sauvegarde}</TableCell>
-                  <TableCell>{getUserName(equipement.user_id)}</TableCell>
+                  <TableCell>{equipement.serial_number}</TableCell>
+                  <TableCell>{equipement.brand}</TableCell>
+                  <TableCell>{equipement.label}</TableCell>
+                  <TableCell>{equipement.nsc}</TableCell>
+                  <TableCell>{equipement.ip_address}</TableCell>
+                  <TableCell>{equipement.processor}</TableCell>
+                  <TableCell>{equipement.office_version}</TableCell>
+                  <TableCell>{equipement.backup_enabled ? 'Oui' : 'Non'}</TableCell>
+                  <TableCell>{getUserInfo(equipement.employer)}</TableCell>
                   <TableCell>
-                    <ActionButton onClick={() => window.location.href = `/equipements/edit/${equipement.id}`}>
+                    <ActionButton onClick={() => handleEdit(equipement.id)}>
                       <FontAwesomeIcon icon={faEdit} />
                     </ActionButton>
-                    <ActionButton delete onClick={() => handleDelete(equipement.id)}>
+                    <ActionButton
+                      delete
+                      onClick={() => handleDelete(equipement.id)}
+                      disabled={isDeleting}
+                    >
                       <FontAwesomeIcon icon={faTrashAlt} />
                     </ActionButton>
                   </TableCell>
                 </TableRow>
               ))}
+              {equipements.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan="13" style={{ textAlign: 'center', padding: '2rem' }}>
+                    Aucun équipement trouvé
+                  </TableCell>
+                </TableRow>
+              )}
             </tbody>
           </Table>
         </ListContainer>
