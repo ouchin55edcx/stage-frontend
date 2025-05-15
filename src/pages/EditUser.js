@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import styled from 'styled-components';
 import Menu from './Menu'; // Assurez-vous que Menu est bien importé
+import { updateEmployer, fetchEmployer } from '../services/employer';
+import { fetchAllServices } from '../services/service';
 
 // Définition du CSS dans un composant styled-components
 const Container = styled.div`
@@ -82,7 +83,7 @@ const Button = styled.button`
 `;
 
 function EditUser() {
-  const { id } = useParams(); // Récupérer l'ID de l'utilisateur depuis l'URL
+  const { id } = useParams();
   const navigate = useNavigate();
 
   // État pour stocker les données de l'utilisateur
@@ -95,19 +96,47 @@ function EditUser() {
     service_id: ''
   });
 
-  // Charger les données de l'utilisateur (simulation ici)
+  const [services, setServices] = useState([]);
+
   useEffect(() => {
-    const mockUser = {
-      id,
-      nom: 'Ahmed Ben Salah',
-      email: 'ahmed.salah@example.com',
-      poste: 'Développeur',
-      tele: '+212 6 12 34 56 78',
-      role: 'admin',
-      service_id: 1
+    const loadData = async () => {
+      try {
+        // Validate ID
+        if (!id || id === 'undefined') {
+          navigate('/admin/users/list');
+          return;
+        }
+
+        // Load user data
+        const userData = await fetchEmployer(id);
+        if (!userData) {
+          alert('Utilisateur non trouvé');
+          navigate('/admin/users/list');
+          return;
+        }
+
+        // Transform API data to match form structure
+        setUser({
+          nom: userData.full_name,
+          email: userData.email,
+          poste: userData.poste,
+          tele: userData.phone,
+          role: userData.role || 'employe',
+          service_id: userData.service_id
+        });
+
+        // Load services
+        const servicesData = await fetchAllServices();
+        setServices(servicesData);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
+        alert('Erreur lors du chargement des données de l\'utilisateur');
+        navigate('/admin/users/list');
+      }
     };
-    setUser(mockUser);
-  }, [id]);
+
+    loadData();
+  }, [id, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -117,17 +146,27 @@ function EditUser() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulation de la soumission des données modifiées
-    axios.put(`/users/${id}`, user)  // Remplacez l'URL par votre endpoint de mise à jour
-      .then(() => {
-        alert('Utilisateur modifié avec succès!');
-        navigate('/admin/users/list');
-      })
-      .catch((error) => {
-        console.error('Erreur lors de la modification de l\'utilisateur:', error);
-      });
+    if (!id || id === 'undefined') {
+      alert('ID utilisateur invalide.');
+      return;
+    }
+    // Map user state to employerData for API
+    const employerData = {
+      full_name: user.nom,
+      email: user.email,
+      poste: user.poste,
+      phone: user.tele,
+      service_id: Number(user.service_id),
+    };
+    try {
+      await updateEmployer(id, employerData);
+      alert('Utilisateur modifié avec succès!');
+      navigate('/admin/users/list');
+    } catch (error) {
+      console.error('Erreur lors de la modification de l\'utilisateur:', error);
+    }
   };
 
   return (
@@ -175,14 +214,25 @@ function EditUser() {
             </FormGroup>
             <FormGroup>
               <Label>Service</Label>
-              <Input
-                type="text"
+              <select
                 name="service_id"
                 value={user.service_id}
                 onChange={handleChange}
                 required
-                placeholder="ID du service"
-              />
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  background: '#FFFFFF',
+                  color: '#333333',
+                  border: '1px solid #CCCCCC',
+                  borderRadius: '8px',
+                }}
+              >
+                <option value="">Sélectionner un service</option>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>{service.name}</option>
+                ))}
+              </select>
             </FormGroup>
             <Button type="submit">Modifier l'utilisateur</Button>
           </form>

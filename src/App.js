@@ -44,7 +44,7 @@ export default function App() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/users/list" element={<UsersList />} />
-          <Route path="/admin/users/edit/:userId" element={<EditUser />} />
+          <Route path="/admin/users/edit/:id" element={<EditUser />} />
           <Route path="/admin/settings" element={<Settings />} />
           <Route path="/admin/interventions" element={<Interventions />} />
           <Route path="/admin/interventions/list" element={<InterventionsList />} />

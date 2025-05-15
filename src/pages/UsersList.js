@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { fetchEmployers } from '../services/employer';
+import { faEdit, faToggleOn, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { fetchEmployers, toggleEmployerStatus } from '../services/employer';
 
 const Container = styled.div`
   display: flex;
@@ -91,6 +91,36 @@ const AddButton = styled.button`
   }
 `;
 
+const StatusBadge = styled.span`
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: ${props => props.active ? '#E8F5E9' : '#FFEBEE'};
+  color: ${props => props.active ? '#2E7D32' : '#C62828'};
+`;
+
+const ToggleButton = styled.button`
+  background: ${props => props.active ? 
+    'linear-gradient(45deg, #2E7D32, #1B5E20)' : 
+    'linear-gradient(45deg, #C62828, #B71C1C)'};
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+`;
+
 function UsersList() {
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
@@ -106,26 +136,39 @@ function UsersList() {
             email: emp.email,
             poste: emp.poste,
             tele: emp.phone,
-            role: 'employe', // or emp.role if available
-            service_id: emp.service_id
+            role: emp.role || 'employe',
+            service_id: emp.service_id,
+            is_active: emp.is_active
           }))
         );
       } catch (err) {
-        // Optionally handle error, e.g. show notification
+        console.error('Erreur lors du chargement des utilisateurs:', err);
+        alert('Erreur lors du chargement des utilisateurs');
       }
     };
     loadEmployers();
   }, []);
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');
-    if (confirmDelete) {
-      setUsers(users.filter(user => user.id !== id));
+  const handleToggleStatus = async (id, currentStatus) => {
+    try {
+      const response = await toggleEmployerStatus(id);
+      if (response.message) {
+        const updatedUsers = users.map(user => {
+          if (user.id === id) {
+            return { ...user, is_active: response.is_active };
+          }
+          return user;
+        });
+        setUsers(updatedUsers);
+      }
+    } catch (error) {
+      console.error('Erreur lors du changement de statut:', error);
+      alert('Erreur lors du changement de statut de l\'utilisateur');
     }
   };
 
   const handleEdit = (id) => {
-    navigate(`/admin/users/edit/${id}`); // Rediriger vers le formulaire de modification
+    navigate(`/admin/users/edit/${id}`);
   };
 
   return (
@@ -143,6 +186,7 @@ function UsersList() {
               <Th>Email</Th>
               <Th>Poste</Th>
               <Th>Téléphone</Th>
+              <Th>Statut</Th>
               <Th>Actions</Th>
             </tr>
           </thead>
@@ -154,12 +198,20 @@ function UsersList() {
                 <Td>{user.poste}</Td>
                 <Td>{user.tele}</Td>
                 <Td>
+                  <StatusBadge active={user.is_active}>
+                    {user.is_active ? 'Actif' : 'Inactif'}
+                  </StatusBadge>
+                </Td>
+                <Td>
                   <ActionButton onClick={() => handleEdit(user.id)}>
                     <FontAwesomeIcon icon={faEdit} />
                   </ActionButton>
-                  <ActionButton delete onClick={() => handleDelete(user.id)}>
-                    <FontAwesomeIcon icon={faTrash} />
-                  </ActionButton>
+                  <ToggleButton 
+                    active={user.is_active}
+                    onClick={() => handleToggleStatus(user.id)}
+                  >
+                    {user.is_active ? 'Désactiver' : 'Activer'}
+                  </ToggleButton>
                 </Td>
               </tr>
             ))}

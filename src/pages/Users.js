@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Menu from './Menu'; // Assurez-vous que Menu est bien importé
+import { fetchAllServices } from '../services/service';
+import { createEmployer } from '../services/employer';
 
 // Définition du CSS dans un composant styled-components
 const Container = styled.div`
@@ -89,33 +90,47 @@ function Users() {
     password: '',
     poste: '',
     tele: '',
-    role: 'employe', // Valeur initiale pour le rôle
-    service_id: '',  // Cela peut être lié à la liste des services de la base de données
+    service_id: '',
   });
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    const loadServices = async () => {
+      const data = await fetchAllServices();
+      setServices(data);
+    };
+    loadServices();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Envoi des données à l'API pour l'ajout d'un utilisateur
-    axios.post('/users', formData)
-      .then(() => {
-        alert('Utilisateur ajouté avec succès!');
-        setFormData({
-          nom: '',
-          email: '',
-          password: '',
-          poste: '',
-          tele: '',
-          role: 'employe',
-          service_id: '',
-        });
-      })
-      .catch((error) => {
-        console.error('Erreur lors de l\'ajout de l\'utilisateur:', error);
+    // Map formData to employerData for API
+    const employerData = {
+      full_name: formData.nom,
+      email: formData.email,
+      poste: formData.poste,
+      phone: formData.tele,
+      service_id: formData.service_id,
+      password: formData.password,
+    };
+    try {
+      await createEmployer(employerData);
+      alert('Employeur ajouté avec succès!');
+      setFormData({
+        nom: '',
+        email: '',
+        password: '',
+        poste: '',
+        tele: '',
+        service_id: '',
       });
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de l\'employeur:', error);
+    }
   };
 
   return (
@@ -146,34 +161,26 @@ function Users() {
               <Input type="tel" name="tele" value={formData.tele} onChange={handleChange} required />
             </FormGroup>
             <FormGroup>
-              <Label>Rôle</Label>
-              <select 
-                name="role" 
-                value={formData.role} 
-                onChange={handleChange} 
-                required 
-                style={{ 
-                  width: '100%', 
-                  padding: '0.8rem', 
-                  background: '#F4F7FA', 
-                  color: '#333', 
-                  border: '1px solid #4A90E2', 
-                  borderRadius: '8px' 
-                }}>
-                <option value="employe">Employé</option>
-                <option value="admin">Admin</option>
-              </select>
-            </FormGroup>
-            <FormGroup>
               <Label>Service</Label>
-              <Input 
-                type="text" 
-                name="service_id" 
-                value={formData.service_id} 
-                onChange={handleChange} 
-                required 
-                placeholder="ID du service" 
-              />
+              <select
+                name="service_id"
+                value={formData.service_id}
+                onChange={handleChange}
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  background: '#F4F7FA',
+                  color: '#333',
+                  border: '1px solid #4A90E2',
+                  borderRadius: '8px',
+                }}
+              >
+                <option value="">Sélectionner un service</option>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>{service.name}</option>
+                ))}
+              </select>
             </FormGroup>
             <Button type="submit">Ajouter l'utilisateur</Button>
           </form>
