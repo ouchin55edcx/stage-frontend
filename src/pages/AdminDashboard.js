@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { 
+import {
   ResponsiveContainer,
   BarChart,
   Bar,
   LineChart,
-  Line, 
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,9 +14,10 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { FaChartBar, FaUsers, FaTools, FaCogs } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaTools, FaCogs, FaBuilding, FaClipboardList } from 'react-icons/fa';
 import Menu from './Menu';
 import styled from 'styled-components';
+import { fetchStatistics, formatStatisticsForDashboard } from '../services/statistics';
 
 // Styles
 const Container = styled.div`
@@ -64,61 +64,83 @@ const ChartCard = styled.div`
 const COLORS = ['#2196F3', '#1976D2', '#90CAF9', '#42A5F5'];
 
 function Dashboard() {
-  const [stats, setStats] = useState({
-    users: 0,
-    equipements: 0,
-    interventions: 0,
-    enPanne: 0,
-    licences: { active: 0, expired: 0 }
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState({
+    users: {
+      total: 0,
+      admins: 0,
+      employers: 0,
+      active: 0,
+      inactive: 0,
+      recent: [],
+      byService: {}
+    },
+    equipment: {
+      total: 0,
+      active: 0,
+      onHold: 0,
+      inProgress: 0,
+      byType: [],
+      byBrand: [],
+      backupEnabled: 0,
+      backupDisabled: 0,
+      recent: []
+    },
+    services: {
+      total: 0,
+      withEmployers: 0,
+      withoutEmployers: 0,
+      distribution: []
+    },
+    declarations: {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      recent: []
+    },
+    interventions: {
+      total: 0,
+      recent: [],
+      byMonth: []
+    },
+    licenses: {
+      total: 0,
+      expiringSoon: 0,
+      expired: 0,
+      byType: []
+    },
+    timeStats: {
+      declarationsByMonth: [],
+      equipmentByMonth: [],
+      usersByMonth: []
+    }
   });
 
-  const [interventionsData, setInterventionsData] = useState([]);
-  const [equipementTypes, setEquipementTypes] = useState([]);
-
   useEffect(() => {
-    const fetchData = async () => {
+    const loadStatistics = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [
-          usersRes, 
-          equipementsRes, 
-          interventionsRes,
-          panneRes,
-          licencesRes,
-          typesRes,
-          interventionsTimeline
-        ] = await Promise.all([
-          axios.get('/api/users/count'),
-          axios.get('/api/equipements/count'),
-          axios.get('/api/interventions/mois'),
-          axios.get('/api/equipements/panne'),
-          axios.get('/api/licences/status'),
-          axios.get('/api/equipements/types'),
-          axios.get('/api/interventions/timeline')
-        ]);
-
-        setStats({
-          users: usersRes.data.count,
-          equipements: equipementsRes.data.count,
-          interventions: interventionsRes.data.count,
-          enPanne: panneRes.data.count,
-          licences: licencesRes.data
-        });
-
-        setEquipementTypes(typesRes.data);
-        setInterventionsData(interventionsTimeline.data);
-
+        const rawStats = await fetchStatistics();
+        const formattedStats = formatStatisticsForDashboard(rawStats);
+        setDashboardData(formattedStats);
       } catch (error) {
-        console.error('Erreur de chargement des données:', error);
+        console.error('Error loading statistics:', error);
+        setError('Failed to load dashboard data. Please try again later.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
+    loadStatistics();
   }, []);
 
   return (
     <Container>
       <Menu notifications={[]} />
-      
+
       <MainContent>
         <h1 style={{
           fontSize: '2.5rem',
@@ -130,108 +152,171 @@ function Dashboard() {
           Tableau de Bord Opérationnel
         </h1>
 
-        {/* Statistiques Rapides */}
-        <StatsGrid>
-          <StatCard>
-            <h3><FaTools /> Équipements Actifs</h3>
-            <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
-              {stats.equipements - stats.enPanne}
-            </div>
-            <small>Total: {stats.equipements}</small>
-          </StatCard>
-
-          <StatCard>
-            <h3><FaUsers /> Nombre Total des Utilisateurs</h3>
-            <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
-              {stats.users}
-            </div>
-            <small>Total des utilisateurs enregistrés</small>
-          </StatCard>
-
-          <StatCard>
-            <h3><FaChartBar /> Interventions</h3>
-            <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
-              {stats.interventions}
-            </div>
-            <small>Ce mois</small>
-          </StatCard>
-
-          <StatCard>
-            <h3><FaCogs /> Licences Actives</h3>
-            <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
-              {stats.licences.active}
-            </div>
-            <small>{stats.licences.expired} expirées</small>
-          </StatCard>
-        </StatsGrid>
-
-        {/* Graphiques */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          <ChartCard>
-            <h3>Répartition des Équipements</h3>
-            <div style={{ height: '300px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={equipementTypes}
-                    dataKey="count"
-                    nameKey="type"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                  >
-                    {equipementTypes.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-
-          <ChartCard>
-            <h3>Activité des Interventions</h3>
-            <div style={{ height: '300px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={interventionsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="interventions" 
-                    stroke="#2196F3" 
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-        </div>
-
-        {/* Statut des équipements */}
-        <ChartCard>
-          <h3>Statut des Équipements</h3>
-          <div style={{ height: '300px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[ 
-                { name: 'Actifs', value: stats.equipements - stats.enPanne },
-                { name: 'En Panne', value: stats.enPanne }
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#42A5F5" />
-              </BarChart>
-            </ResponsiveContainer>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Chargement des statistiques...</div>
           </div>
-        </ChartCard>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'red' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{error}</div>
+          </div>
+        ) : (
+          <>
+            {/* Statistiques Rapides - Utilisateurs et Équipements */}
+            <StatsGrid>
+              <StatCard>
+                <h3><FaUsers /> Utilisateurs</h3>
+                <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
+                  {dashboardData.users.total}
+                </div>
+                <small>Admins: {dashboardData.users.admins} | Employés: {dashboardData.users.employers}</small>
+              </StatCard>
 
+              <StatCard>
+                <h3><FaTools /> Équipements</h3>
+                <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
+                  {dashboardData.equipment.total}
+                </div>
+                <small>Actifs: {dashboardData.equipment.active} | En attente: {dashboardData.equipment.onHold} | En cours: {dashboardData.equipment.inProgress}</small>
+              </StatCard>
+
+              <StatCard>
+                <h3><FaBuilding /> Services</h3>
+                <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
+                  {dashboardData.services.total}
+                </div>
+                <small>Avec employés: {dashboardData.services.withEmployers} | Sans employés: {dashboardData.services.withoutEmployers}</small>
+              </StatCard>
+
+              <StatCard>
+                <h3><FaClipboardList /> Déclarations</h3>
+                <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
+                  {dashboardData.declarations.total}
+                </div>
+                <small>En attente: {dashboardData.declarations.pending} | Approuvées: {dashboardData.declarations.approved} | Rejetées: {dashboardData.declarations.rejected}</small>
+              </StatCard>
+            </StatsGrid>
+
+            {/* Statistiques Rapides - Interventions et Licences */}
+            <StatsGrid>
+              <StatCard>
+                <h3><FaChartBar /> Interventions</h3>
+                <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
+                  {dashboardData.interventions.total}
+                </div>
+                <small>Interventions totales</small>
+              </StatCard>
+
+              <StatCard>
+                <h3><FaCogs /> Licences</h3>
+                <div style={{ fontSize: '2.5rem', color: '#1976D2' }}>
+                  {dashboardData.licenses.total}
+                </div>
+                <small>Expirant bientôt: {dashboardData.licenses.expiringSoon} | Expirées: {dashboardData.licenses.expired}</small>
+              </StatCard>
+            </StatsGrid>
+
+            {/* Graphiques */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <ChartCard>
+                <h3>Répartition des Équipements par Type</h3>
+                <div style={{ height: '300px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={dashboardData.equipment.byType.length > 0 ?
+                          dashboardData.equipment.byType :
+                          [{ name: 'Aucune donnée', value: 1 }]}
+                        dataKey="count"
+                        nameKey="type"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                      >
+                        {(dashboardData.equipment.byType.length > 0 ?
+                          dashboardData.equipment.byType :
+                          [{ name: 'Aucune donnée', value: 1 }]).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </ChartCard>
+
+              <ChartCard>
+                <h3>Distribution des Employés par Service</h3>
+                <div style={{ height: '300px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dashboardData.services.distribution.length > 0 ?
+                      dashboardData.services.distribution.map(item => ({
+                        name: item.name,
+                        value: item.employers_count
+                      })) :
+                      [{ name: 'Aucune donnée', value: 0 }]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="value" fill="#42A5F5" name="Nombre d'employés" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </ChartCard>
+            </div>
+
+            {/* Activité des utilisateurs par mois */}
+            <ChartCard>
+              <h3>Activité des Utilisateurs par Mois</h3>
+              <div style={{ height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dashboardData.timeStats.usersByMonth.length > 0 ?
+                    dashboardData.timeStats.usersByMonth.map(item => ({
+                      date: `${item.month}/${item.year}`,
+                      count: item.count
+                    })) :
+                    [{ date: 'Aucune donnée', count: 0 }]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#2196F3"
+                      strokeWidth={2}
+                      name="Nombre d'utilisateurs"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+
+            {/* Statut des équipements */}
+            <ChartCard>
+              <h3>Statut des Équipements</h3>
+              <div style={{ height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'Actifs', value: dashboardData.equipment.active },
+                    { name: 'En attente', value: dashboardData.equipment.onHold },
+                    { name: 'En cours', value: dashboardData.equipment.inProgress }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#42A5F5" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          </>
+        )}
       </MainContent>
     </Container>
   );

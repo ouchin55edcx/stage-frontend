@@ -19,6 +19,7 @@ import ServicesList from './pages/ServicesList';
 import LicencesList from './pages/LicencesList';
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceListPage from './pages/MaintenanceListPage';
+import Notifications from './pages/Notifications';
 
 import EditUser from './pages/EditUser'; // Page pour modifier un utilisateur
 import EditEquipement from './pages/EditEquipement'; // ✅ Page pour modifier un équipement
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/edit-service/:id" element={<EditService />} /> {/* La route pour EditService */}
           <Route path="/edit-licence/:id" element={<EditLicence />} />
           <Route path="/admin/edit-maintenance/:id" element={<EditMaintenance />} />
+          <Route path="/notifications" element={<Notifications />} />
 
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/employee/declaration" element={<Declaration />} />
