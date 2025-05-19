@@ -34,14 +34,38 @@ const Layout = () => {
   return <Outlet />;
 };
 
+// Logout component to clear localStorage and redirect to login
+const Logout = () => {
+  React.useEffect(() => {
+    // Clear all localStorage items
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('email');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('fullName');
+    // Add any other items that need to be cleared
+  }, []);
+
+  // Redirect to login page
+  return <Navigate to="/login" />;
+};
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public route for login */}
         <Route path="/login" element={<Login />} />
 
+        {/* Logout route */}
+        <Route path="/logout" element={<Logout />} />
+
+        {/* Redirect root path to login */}
+        <Route path="/" element={<Navigate to="/login" />} />
+
+        {/* Protected routes that require authentication */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Accueil />} />
+          <Route path="/home" element={<Accueil />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/users/list" element={<UsersList />} />
@@ -70,6 +94,7 @@ export default function App() {
           <Route path="/employee/profile" element={<Profile />} />
         </Route>
 
+        {/* Redirect all other routes to login */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>

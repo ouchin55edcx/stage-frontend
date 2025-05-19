@@ -91,7 +91,7 @@ const EditIntervention = () => {
 
       // Redirect to interventions list
       alert("Intervention mise à jour avec succès !");
-      navigate('/interventions-list');
+      navigate('/admin/interventions/list');
     } catch (err) {
       console.error('Erreur lors de la mise à jour:', err);
       setError(err.message || 'Une erreur est survenue lors de la mise à jour.');
@@ -254,7 +254,7 @@ const EditIntervention = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/interventions-list')}
+              onClick={() => navigate('/admin/interventions/list')}
               style={{
                 padding: '0.7rem 1.5rem',
                 background: '#E0E0E0',

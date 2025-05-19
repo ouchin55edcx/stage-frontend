@@ -80,7 +80,7 @@ const InterventionsForm = () => {
 
       // Rediriger vers la liste des interventions après succès
       alert("Intervention enregistrée avec succès !");
-      navigate('/interventions-list');
+      navigate('/admin/interventions/list');
     } catch (err) {
       console.error('Erreur lors de l\'enregistrement de l\'intervention:', err);
       setError(err.message || 'Une erreur est survenue lors de l\'enregistrement de l\'intervention.');

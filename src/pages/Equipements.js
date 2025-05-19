@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import Menu from './Menu';
 import { getAllEquipments, createEquipment } from '../services/equipment';
 import { fetchEmployers } from '../services/employer';
+import { useNavigate } from 'react-router-dom';
 
 // Définition du CSS dans un composant styled-components
 const Container = styled.div`
@@ -113,6 +114,7 @@ const Checkbox = styled.div`
 `;
 
 function Equipements() {
+  const navigate = useNavigate();
   const [equipements, setEquipements] = useState([]);
   const [employers, setEmployers] = useState([]);
   const [formData, setFormData] = useState({
@@ -219,27 +221,8 @@ function Equipements() {
       // Success message
       alert("Équipement ajouté avec succès !");
 
-      // Refresh equipment list
-      const equipmentsResponse = await getAllEquipments();
-      setEquipements(equipmentsResponse.data);
-
-      // Reset form
-      setFormData({
-        name: '',
-        type: '',
-        status: 'active', // Reset to default 'active' status
-        serial_number: '',
-        brand: '',
-        label: '',
-        nsc: '',
-        ip_address: '',
-        processor: '',
-        office_version: '',
-        backup_enabled: false,
-        employer_id: '',
-      });
-
-      setErrors({});
+      // Redirect to equipment list page
+      navigate('/admin/equipements/list');
     } catch (error) {
       console.error('Erreur lors de l\'ajout de l\'équipement:', error);
       alert(`Erreur: ${error.message || 'Une erreur est survenue lors de l\'ajout de l\'équipement'}`);

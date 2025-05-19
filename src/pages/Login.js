@@ -9,7 +9,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('admin');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const navigate = useNavigate();
 
@@ -20,14 +19,14 @@ const Login = () => {
 
     try {
       const response = await loginUser(email, password);
-      
+
       // Store user info in localStorage
       localStorage.setItem('token', response.token);
       localStorage.setItem('role', response.role);
       localStorage.setItem('email', response.user.email);
       localStorage.setItem('userId', response.user.id);
       localStorage.setItem('fullName', response.user.full_name);
-      
+
       // Redirect based on role
       navigate(response.role.toLowerCase() === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
     } catch (error) {
@@ -69,28 +68,7 @@ const Login = () => {
       width: '100%',
       maxWidth: '480px',
     },
-    roleSelector: {
-      display: 'flex',
-      gap: '1rem',
-      marginBottom: '2rem',
-    },
-    roleButton: {
-      flex: 1,
-      padding: '0.8rem',
-      border: '2px solid #cccccc',
-      background: '#f9f9f9',
-      color: '#333',
-      fontSize: '1rem',
-      fontWeight: '500',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      transition: '0.3s',
-    },
-    activeRole: {
-      borderColor: '#007BFF',
-      background: '#007BFF',
-      color: '#ffffff',
-    },
+    // Removed role selector styles
     title: {
       textAlign: 'center',
       marginBottom: '2rem',
@@ -157,26 +135,7 @@ const Login = () => {
     <div style={styles.container}>
       <div style={styles.formContainer}>
         <div style={styles.card}>
-          <div style={styles.roleSelector}>
-            <button
-              style={{ ...styles.roleButton, ...(selectedRole === 'admin' && styles.activeRole) }}
-              onClick={() => setSelectedRole('admin')}
-              type="button"
-            >
-              Admin
-            </button>
-            <button
-              style={{ ...styles.roleButton, ...(selectedRole === 'employe' && styles.activeRole) }}
-              onClick={() => setSelectedRole('employe')}
-              type="button"
-            >
-              Employé
-            </button>
-          </div>
-
-          <h2 style={styles.title}>
-            {selectedRole === 'admin' ? 'CONNEXION ADMIN' : 'CONNEXION EMPLOYÉ'}
-          </h2>
+          <h2 style={styles.title}>CONNEXION</h2>
 
           <form onSubmit={handleLogin}>
             <div style={styles.inputGroup}>

@@ -167,7 +167,7 @@ function EditEquipement() {
           setFormData(equipmentData.data);
         } else {
           alert('Équipement non trouvé');
-          navigate('/equipements');
+          navigate('/admin/equipements/list');
         }
 
         // Fetch employers for dropdown
@@ -241,7 +241,7 @@ function EditEquipement() {
     try {
       await updateEquipment(id, formData);
       alert('Équipement modifié avec succès !');
-      navigate('/equipements');
+      navigate('/admin/equipements/list');
     } catch (error) {
       console.error('Error updating equipment:', error);
       alert(`Erreur: ${error.message || 'Une erreur est survenue lors de la modification'}`);

@@ -9,10 +9,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell
+  Legend
 } from 'recharts';
 import { FaChartBar, FaUsers, FaTools, FaCogs, FaBuilding, FaClipboardList } from 'react-icons/fa';
 import Menu from './Menu';
@@ -60,8 +57,6 @@ const ChartCard = styled.div`
   margin: 2rem 0;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 `;
-
-const COLORS = ['#2196F3', '#1976D2', '#90CAF9', '#42A5F5'];
 
 function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -217,35 +212,7 @@ function Dashboard() {
             </StatsGrid>
 
             {/* Graphiques */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-              <ChartCard>
-                <h3>Répartition des Équipements par Type</h3>
-                <div style={{ height: '300px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={dashboardData.equipment.byType.length > 0 ?
-                          dashboardData.equipment.byType :
-                          [{ name: 'Aucune donnée', value: 1 }]}
-                        dataKey="count"
-                        nameKey="type"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                      >
-                        {(dashboardData.equipment.byType.length > 0 ?
-                          dashboardData.equipment.byType :
-                          [{ name: 'Aucune donnée', value: 1 }]).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </ChartCard>
-
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
               <ChartCard>
                 <h3>Distribution des Employés par Service</h3>
                 <div style={{ height: '300px' }}>
