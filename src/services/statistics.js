@@ -1,7 +1,6 @@
 // src/services/statistics.js
 import axios from 'axios';
-
-const API_URL = 'http://localhost:8080/api';
+import { API_URL } from './api';
 
 // Create axios instance with auth token
 const api = axios.create({
@@ -48,7 +47,7 @@ export const fetchMyStatistics = async () => {
     const token = localStorage.getItem('token');
     console.log('Fetching statistics with token:', token ? 'Token exists' : 'No token found');
 
-    const response = await axios.get('http://localhost:8080/api/my-statistics', {
+    const response = await axios.get(`${API_URL}/my-statistics`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
