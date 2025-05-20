@@ -19,18 +19,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+
+
 /**
  * Get all maintenances with optional filtering
- * @param {Object} filters - Optional filters (month, year, equipment_id)
+ * @param {Object} filters - Optional filters (month, year, equipment_id, scheduled_date)
  * @returns {Promise<Array>} Array of maintenance objects
  */
 export const getAllMaintenances = async (filters = {}) => {
   try {
     // Build query string from filters
     const queryParams = new URLSearchParams();
+
+    // Handle all filters including scheduled_date
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
+        // Just add the filter as is - we'll handle date normalization in the component
         queryParams.append(key, value);
+        console.log(`Adding filter: ${key}=${value}`);
       }
     });
 
@@ -43,81 +49,25 @@ export const getAllMaintenances = async (filters = {}) => {
 
     // Check if response.data has a data property
     if (response.data && response.data.data) {
+      console.log('Returning response.data.data:', response.data.data);
       return response.data.data;
     }
 
     // If response.data is an array, return it
     if (Array.isArray(response.data)) {
+      console.log('Returning response.data array:', response.data);
       return response.data;
     }
 
     // Default to empty array if no valid data found
-    console.warn('No maintenance data found in response, returning mock data for testing');
-    return [
-      {
-        id: 1,
-        equipment_id: 1,
-        maintenance_type: 'Preventive',
-        scheduled_date: '2023-10-15',
-        performed_date: '2023-10-16',
-        next_maintenance_date: '2024-01-15',
-        observations: 'Replaced air filters and updated firmware',
-        technician_id: 1,
-        created_at: '2023-10-01T10:00:00.000000Z',
-        updated_at: '2023-10-16T15:30:00.000000Z',
-        equipment: { id: 1, name: 'Server X1', type: 'Server', status: 'active' },
-        technician: { id: 1, full_name: 'John Doe' }
-      },
-      {
-        id: 2,
-        equipment_id: 2,
-        maintenance_type: 'Corrective',
-        scheduled_date: '2023-09-20',
-        performed_date: '2023-09-21',
-        next_maintenance_date: '2023-12-20',
-        observations: 'Hard drive replaced and system tested',
-        technician_id: 2,
-        created_at: '2023-09-01T14:25:00.000000Z',
-        updated_at: '2023-09-21T10:15:00.000000Z',
-        equipment: { id: 2, name: 'Laptop L1', type: 'Laptop', status: 'active' },
-        technician: { id: 2, full_name: 'Jane Smith' }
-      }
-    ];
+    console.warn('No maintenance data found in response');
+    return [];
   } catch (error) {
     console.error('Error in getAllMaintenances:', error);
 
-    // For testing purposes, return mock data on error
-    console.warn('Error occurred, returning mock data for testing');
-    return [
-      {
-        id: 1,
-        equipment_id: 1,
-        maintenance_type: 'Preventive',
-        scheduled_date: '2023-10-15',
-        performed_date: '2023-10-16',
-        next_maintenance_date: '2024-01-15',
-        observations: 'Replaced air filters and updated firmware',
-        technician_id: 1,
-        created_at: '2023-10-01T10:00:00.000000Z',
-        updated_at: '2023-10-16T15:30:00.000000Z',
-        equipment: { id: 1, name: 'Server X1', type: 'Server', status: 'active' },
-        technician: { id: 1, full_name: 'John Doe' }
-      },
-      {
-        id: 2,
-        equipment_id: 2,
-        maintenance_type: 'Corrective',
-        scheduled_date: '2023-09-20',
-        performed_date: '2023-09-21',
-        next_maintenance_date: '2023-12-20',
-        observations: 'Hard drive replaced and system tested',
-        technician_id: 2,
-        created_at: '2023-09-01T14:25:00.000000Z',
-        updated_at: '2023-09-21T10:15:00.000000Z',
-        equipment: { id: 2, name: 'Laptop L1', type: 'Laptop', status: 'active' },
-        technician: { id: 2, full_name: 'Jane Smith' }
-      }
-    ];
+    // Return empty array on error
+    console.warn('Error occurred fetching maintenances');
+    return [];
   }
 };
 
@@ -140,20 +90,9 @@ export const getMaintenanceById = async (id) => {
   } catch (error) {
     console.error('Error in getMaintenanceById:', error);
 
-    // For testing purposes, return mock data on error
-    console.warn('Error occurred, returning mock data for testing');
-    return {
-      id: id,
-      equipment_id: '1',
-      maintenance_type: 'Preventive',
-      scheduled_date: '2023-10-15',
-      performed_date: '2023-10-16',
-      next_maintenance_date: '2024-01-15',
-      observations: 'Mock maintenance data for testing',
-      technician_id: '1',
-      equipment: { id: 1, name: 'Server X1', type: 'Server', status: 'active' },
-      technician: { id: 1, full_name: 'John Doe' }
-    };
+    // Return null on error
+    console.warn('Error occurred fetching maintenance by ID');
+    return null;
   }
 };
 
@@ -177,17 +116,9 @@ export const createMaintenance = async (maintenanceData) => {
   } catch (error) {
     console.error('Error in createMaintenance:', error);
 
-    // For testing purposes, return mock success response
-    console.warn('Error occurred, returning mock success response for testing');
-    return {
-      message: 'Maintenance created successfully (mock)',
-      data: {
-        id: Math.floor(Math.random() * 1000) + 1, // Generate random ID
-        ...maintenanceData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    };
+    // Propagate the error
+    console.error('Failed to create maintenance');
+    throw error;
   }
 };
 
@@ -240,62 +171,16 @@ export const deleteMaintenance = async (id) => {
 export const getMaintenancesByDate = async (date) => {
   try {
     console.log('Fetching maintenances for date:', date); // Debug log
-    const response = await api.get(`/maintenances/date/${date}`);
-    console.log('Raw maintenances by date response:', response); // Debug log
 
-    // Check if response.data has a data property
-    if (response.data && response.data.data) {
-      return response.data;
-    }
-
-    // If response.data is an array, wrap it in an object with data property
-    if (Array.isArray(response.data)) {
-      return { data: response.data };
-    }
-
-    // Default to empty array if no valid data found
-    console.warn('No maintenance data found for date, returning mock data for testing');
-    return {
-      data: [
-        {
-          id: 1,
-          equipment_id: 1,
-          maintenance_type: 'Preventive',
-          scheduled_date: date,
-          performed_date: date,
-          next_maintenance_date: '2024-01-15',
-          observations: 'Replaced air filters and updated firmware',
-          technician_id: 1,
-          created_at: '2023-10-01T10:00:00.000000Z',
-          updated_at: '2023-10-16T15:30:00.000000Z',
-          equipment: { id: 1, name: 'Server X1', type: 'Server', status: 'active' },
-          technician: { id: 1, full_name: 'John Doe' }
-        }
-      ]
-    };
+    // Use the more general getAllMaintenances function with a scheduled_date filter
+    // This ensures consistent behavior between the two functions
+    return await getAllMaintenances({ scheduled_date: date });
   } catch (error) {
     console.error('Error in getMaintenancesByDate:', error);
 
-    // For testing purposes, return mock data on error
-    console.warn('Error occurred, returning mock data for testing');
-    return {
-      data: [
-        {
-          id: 1,
-          equipment_id: 1,
-          maintenance_type: 'Preventive',
-          scheduled_date: date,
-          performed_date: date,
-          next_maintenance_date: '2024-01-15',
-          observations: 'Replaced air filters and updated firmware',
-          technician_id: 1,
-          created_at: '2023-10-01T10:00:00.000000Z',
-          updated_at: '2023-10-16T15:30:00.000000Z',
-          equipment: { id: 1, name: 'Server X1', type: 'Server', status: 'active' },
-          technician: { id: 1, full_name: 'John Doe' }
-        }
-      ]
-    };
+    // Return empty data array on error
+    console.warn('Error occurred fetching maintenances by date');
+    return [];
   }
 };
 
@@ -306,9 +191,15 @@ export const getMaintenancesByDate = async (date) => {
  */
 export const getMaintenancesByEquipment = async (equipmentId) => {
   try {
-    const response = await api.get(`/maintenances?equipment_id=${equipmentId}`);
-    return response.data;
+    console.log('Fetching maintenances for equipment ID:', equipmentId); // Debug log
+
+    // Use the more general getAllMaintenances function with an equipment_id filter
+    // This ensures consistent behavior between the two functions
+    return await getAllMaintenances({ equipment_id: equipmentId });
   } catch (error) {
+    console.error('Error in getMaintenancesByEquipment:', error);
+
+    // Propagate the error
     if (error.response) {
       throw new Error(error.response.data.message || 'Server responded with an error');
     } else if (error.request) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -6,8 +6,10 @@ import {
   faShieldAlt,
   faDatabase,
   faBell,
-  faProjectDiagram
+  faProjectDiagram,
+  faFileDownload
 } from '@fortawesome/free-solid-svg-icons';
+import { generateStatisticsReport } from '../services/statistics';
 
 const styles = {
   container: {
@@ -78,6 +80,28 @@ const styles = {
 };
 
 export default function Accueil() {
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null); // null, 'success', 'error'
+
+  const handleGenerateReport = async () => {
+    try {
+      setIsGeneratingReport(true);
+      setReportStatus(null);
+      await generateStatisticsReport('statistics-report', 'rapport-statistiques.pdf');
+      setIsGeneratingReport(false);
+      setReportStatus('success');
+
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setReportStatus(null);
+      }, 5000);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setIsGeneratingReport(false);
+      setReportStatus('error');
+    }
+  };
+
   const highlights = [
     {
       icon: faProjectDiagram,
@@ -127,10 +151,47 @@ export default function Accueil() {
                 <FontAwesomeIcon icon={faBell} />
                 &nbsp; Support
               </button>
-              <button style={quickActionStyle}>
-                <FontAwesomeIcon icon={faDatabase} />
-                &nbsp; Générer Rapport
+              <button
+                style={quickActionStyle}
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+              >
+                <FontAwesomeIcon icon={isGeneratingReport ? faFileDownload : faDatabase} spin={isGeneratingReport} />
+                &nbsp; {isGeneratingReport ? 'Génération en cours...' : 'Générer Rapport'}
               </button>
+
+              {reportStatus === 'success' && (
+                <div style={{
+                  backgroundColor: '#e6f7e6',
+                  color: '#2e7d32',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  marginTop: '0.5rem',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FontAwesomeIcon icon={faFileDownload} style={{ marginRight: '0.5rem' }} />
+                  Rapport téléchargé avec succès!
+                </div>
+              )}
+
+              {reportStatus === 'error' && (
+                <div style={{
+                  backgroundColor: '#ffebee',
+                  color: '#c62828',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  marginTop: '0.5rem',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  Erreur lors de la génération du rapport
+                </div>
+              )}
             </div>
           </div>
         </section>

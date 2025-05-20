@@ -1,28 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import Menu from './Menu'; // Assurez-vous que le chemin est correct
-import { getUserInfo } from '../services/api';
+import { getUserInfo, updateProfile, testApiConnection, testProfileEndpoint } from '../services/api';
 
 const Settings = () => {
   const [userData, setUserData] = useState({
     full_name: '',
     email: '',
-    role: ''
+    role: '',
+    poste: '',
+    phone: ''
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [success, setSuccess] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
+
+        // First test API connection
+        console.log('Testing API connection...');
+        const connectionTest = await testApiConnection();
+        console.log('API connection test result:', connectionTest);
+
+        if (!connectionTest.success) {
+          setError(`Impossible de se connecter à l'API: ${connectionTest.message}`);
+          setLoading(false);
+          return;
+        }
+
+        // Test profile endpoint specifically
+        console.log('Testing profile endpoint...');
+        const profileTest = await testProfileEndpoint();
+        console.log('Profile endpoint test result:', profileTest);
+
+        if (!profileTest.success) {
+          setError(`Le point d'accès du profil n'est pas disponible: ${profileTest.message}`);
+          setLoading(false);
+          return;
+        }
+
         const response = await getUserInfo();
         if (response && response.user) {
           setUserData({
             full_name: response.user.full_name,
             email: response.user.email,
-            role: response.user.role
+            role: response.user.role,
+            poste: response.user.poste || '',
+            phone: response.user.phone || ''
           });
         }
       } catch (err) {
@@ -36,15 +63,54 @@ const Settings = () => {
     fetchUserData();
   }, []);
 
-  const handlePasswordChange = () => {
-    if (password !== confirmPassword) {
-      alert('Les mots de passe ne correspondent pas');
-      return;
-    }
+  const handleProfileUpdate = async () => {
+    try {
+      setUpdating(true);
+      setError('');
+      setSuccess('');
 
-    // Ici, tu peux ajouter la logique pour changer le mot de passe via l'API
-    alert('Mot de passe modifié avec succès');
+      console.log('Starting profile update...');
+
+      // Prepare profile data based on user role
+      const profileData = {
+        full_name: userData.full_name,
+        email: userData.email
+      };
+
+      // Add employer-specific fields if user is an employer
+      if (userData.role.toLowerCase() === 'employer') {
+        profileData.poste = userData.poste;
+        profileData.phone = userData.phone;
+      }
+
+      console.log('Sending profile data:', profileData);
+
+      const response = await updateProfile(profileData);
+      console.log('Profile update response:', response);
+
+      setSuccess('Profil mis à jour avec succès');
+
+      // Update local user data with response if needed
+      if (response && response.user) {
+        setUserData({
+          ...userData,
+          ...response.user
+        });
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response,
+        stack: err.stack
+      });
+      setError(err.response?.data?.message || 'Erreur lors de la mise à jour du profil');
+    } finally {
+      setUpdating(false);
+    }
   };
+
+
 
   return (
     <div style={{ display: 'flex', backgroundColor: '#FFFFFF', minHeight: '100vh' }}> {/* Contexte avec fond blanc ici */}
@@ -108,6 +174,35 @@ const Settings = () => {
             {/* Section Profil */}
             <div style={{ marginBottom: '2rem' }}>
               <h3 style={{ color: '#1A73E8', marginBottom: '1rem' }}>Modifier Profil</h3>
+
+              {/* Success message */}
+              {success && (
+                <div style={{
+                  background: '#E6F7E6',
+                  color: '#2E7D32',
+                  padding: '0.8rem',
+                  borderRadius: '8px',
+                  marginBottom: '1rem',
+                  border: '1px solid #A5D6A7'
+                }}>
+                  {success}
+                </div>
+              )}
+
+              {/* Error message */}
+              {error && (
+                <div style={{
+                  background: '#FFEBEE',
+                  color: '#C62828',
+                  padding: '0.8rem',
+                  borderRadius: '8px',
+                  marginBottom: '1rem',
+                  border: '1px solid #FFCDD2'
+                }}>
+                  {error}
+                </div>
+              )}
+
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ color: '#1A73E8' }}>Nom</label>
                 <input
@@ -142,88 +237,112 @@ const Settings = () => {
                   }}
                 />
               </div>
-              <button
-                style={{
-                  padding: '0.7rem 1.5rem',
-                  background: '#1A73E8',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  marginTop: '1rem',
-                  display: 'block',
-                  width: '100%',
-                }}
-              >
-                Sauvegarder les modifications
-              </button>
+
+              {/* Only show these fields for employers */}
+              {userData.role && userData.role.toLowerCase() === 'employer' && (
+                <>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ color: '#1A73E8' }}>Poste</label>
+                    <input
+                      type="text"
+                      value={userData.poste || ''}
+                      onChange={(e) => setUserData({...userData, poste: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        borderRadius: '8px',
+                        marginTop: '0.5rem',
+                        border: '1px solid #1A73E8',
+                        background: '#E6F7FF',
+                        color: '#1A73E8',
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ color: '#1A73E8' }}>Téléphone</label>
+                    <input
+                      type="text"
+                      value={userData.phone || ''}
+                      onChange={(e) => setUserData({...userData, phone: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        borderRadius: '8px',
+                        marginTop: '0.5rem',
+                        border: '1px solid #1A73E8',
+                        background: '#E6F7FF',
+                        color: '#1A73E8',
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  type="button" // Explicitly set type to button
+                  onClick={() => {
+                    console.log('Save button clicked');
+                    handleProfileUpdate();
+                  }}
+                  disabled={updating}
+                  style={{
+                    padding: '0.7rem 1.5rem',
+                    background: updating ? '#90CAF9' : '#1A73E8',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: updating ? 'default' : 'pointer',
+                    marginTop: '1rem',
+                    flex: '1',
+                  }}
+                >
+                  {updating ? 'Mise à jour en cours...' : 'Sauvegarder les modifications'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    console.log('Test profile endpoint button clicked');
+                    try {
+                      setUpdating(true);
+                      setError('');
+                      setSuccess('');
+
+                      const profileTest = await testProfileEndpoint();
+                      console.log('Profile endpoint test result:', profileTest);
+
+                      if (profileTest.success) {
+                        setSuccess(`Test réussi: ${profileTest.message}. Méthodes autorisées: ${profileTest.allowedMethods || 'Non spécifié'}`);
+                      } else {
+                        setError(`Test échoué: ${profileTest.message}`);
+                      }
+                    } catch (err) {
+                      console.error('Error testing profile endpoint:', err);
+                      setError(`Erreur lors du test: ${err.message}`);
+                    } finally {
+                      setUpdating(false);
+                    }
+                  }}
+                  disabled={updating}
+                  style={{
+                    padding: '0.7rem 1.5rem',
+                    background: updating ? '#90CAF9' : '#4CAF50',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: updating ? 'default' : 'pointer',
+                    marginTop: '1rem',
+                  }}
+                >
+                  Tester l'API
+                </button>
+              </div>
             </div>
           </>
         )}
 
-        {/* Section Mot de Passe - Only show when user data is loaded */}
-        {!loading && !error && (
-          <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ color: '#1A73E8', marginBottom: '1rem' }}>Modifier le mot de passe</h3>
-            <div style={{
-              background: '#E6F7FF',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              border: '1px solid #1A73E8'
-            }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#1A73E8' }}>Nouveau mot de passe</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.8rem',
-                    borderRadius: '8px',
-                    marginTop: '0.5rem',
-                    border: '1px solid #1A73E8', // Bordure bleue moderne
-                    background: '#FFFFFF', // Fond blanc pour contraste
-                    color: '#1A73E8', // Texte bleu moderne
-                  }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#1A73E8' }}>Confirmer le mot de passe</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.8rem',
-                    borderRadius: '8px',
-                    marginTop: '0.5rem',
-                    border: '1px solid #1A73E8', // Bordure bleue moderne
-                    background: '#FFFFFF', // Fond blanc pour contraste
-                    color: '#1A73E8', // Texte bleu moderne
-                  }}
-                />
-              </div>
-              <button
-                onClick={handlePasswordChange}
-                style={{
-                  padding: '0.7rem 1.5rem',
-                  background: '#1A73E8', // Bouton bleu moderne
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  marginTop: '1rem',
-                  display: 'block',
-                  width: '100%',
-                }}
-              >
-                Sauvegarder le mot de passe
-              </button>
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );

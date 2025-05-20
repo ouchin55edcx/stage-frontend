@@ -25,8 +25,13 @@ import {
   faSave,
   faTimes,
   faSearch,
-  faFilter
+  faFilter,
+  faEdit,
+  faTrash
 } from '@fortawesome/free-solid-svg-icons';
+import Pagination from '../components/Pagination';
+import Modal from '../components/Modal';
+import MaintenanceForm from '../components/MaintenanceForm';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -495,6 +500,18 @@ const CalendarDay = styled.div`
     }
   }
 
+  &.filtered {
+    background: linear-gradient(to bottom right, #8b5cf6, #7c3aed);
+    color: white;
+    font-weight: 600;
+    border-color: #6d28d9;
+    box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
+
+    &:after {
+      display: none;
+    }
+  }
+
   &.has-maintenance {
     &:before {
       content: '';
@@ -506,6 +523,14 @@ const CalendarDay = styled.div`
       border-radius: 50%;
       background-color: #f59e0b;
     }
+  }
+
+  .filter-indicator {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    font-size: 0.5rem;
+    color: white;
   }
 `;
 
@@ -540,10 +565,14 @@ const Notification = styled.div`
 
 const MaintenancePage = () => {
   const [maintenances, setMaintenances] = useState([]);
+  const [allMaintenances, setAllMaintenances] = useState([]);
   const [date, setDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [equipments, setEquipments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [monthMaintenances, setMonthMaintenances] = useState([]);
+  const [filterDate, setFilterDate] = useState('');
+  const [isFiltering, setIsFiltering] = useState(false);
   const [newMaintenance, setNewMaintenance] = useState({
     equipment_id: '',
     maintenance_type: '',
@@ -554,26 +583,284 @@ const MaintenancePage = () => {
     technician_id: '',
   });
 
-  const handleDateClick = (selectedDay) => {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(2); // Default to 2 cards per page
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleDateClick = async (selectedDay) => {
     setDate(selectedDay);
     const formattedDate = formatDate(selectedDay);
-    fetchMaintenancesByDate(formattedDate);
+
+    // Set the filter date to the selected date
+    setFilterDate(formattedDate);
+
+    // Apply filter by the selected date from calendar
+    setIsFiltering(true);
+    setIsLoading(true);
+
+    try {
+      console.log('Calendar date clicked:', formattedDate);
+
+      // Option 1: Filter from already loaded maintenances
+      if (allMaintenances.length > 0) {
+        console.log('Filtering from loaded maintenances by calendar selection');
+
+        // Debug the maintenances data
+        console.log('All maintenances:', allMaintenances);
+
+        const filtered = allMaintenances.filter(maintenance => {
+          // Normalize dates for comparison
+          const normalizedMaintenanceDate = normalizeDate(maintenance.scheduled_date);
+          const normalizedFilterDate = normalizeDate(formattedDate);
+
+          // Check if scheduled_date matches the filter date
+          const matches = normalizedMaintenanceDate === normalizedFilterDate;
+          console.log(`Maintenance ${maintenance.id || 'unknown'}: ${maintenance.scheduled_date} (normalized: ${normalizedMaintenanceDate}) matches ${formattedDate} (normalized: ${normalizedFilterDate})? ${matches}`);
+          return matches;
+        });
+
+        console.log('Filtered maintenances by calendar:', filtered);
+        setMaintenances(filtered);
+      }
+      // Option 2: Fetch filtered maintenances from API
+      else {
+        console.log('Fetching filtered maintenances from API by calendar selection');
+        // Try to fetch with specific scheduled_date filter
+        const response = await getAllMaintenances({ scheduled_date: formattedDate });
+
+        if (Array.isArray(response) && response.length > 0) {
+          console.log('Got filtered response from API:', response);
+          setMaintenances(response);
+        } else if (response && Array.isArray(response.data) && response.data.length > 0) {
+          console.log('Got filtered response.data from API:', response.data);
+          setMaintenances(response.data);
+        } else {
+          // If no results with filter, try direct date endpoint
+          console.log('No results with filter, trying direct date endpoint');
+          const dateResponse = await getMaintenancesByDate(formattedDate);
+
+          if (Array.isArray(dateResponse)) {
+            console.log('Got array response from date endpoint:', dateResponse);
+            setMaintenances(dateResponse);
+          } else if (dateResponse && Array.isArray(dateResponse.data)) {
+            console.log('Got response.data from date endpoint:', dateResponse.data);
+            setMaintenances(dateResponse.data);
+          } else {
+            console.log('No maintenances found for date:', formattedDate);
+            setMaintenances([]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error filtering by calendar date:', error);
+      setMaintenances([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatDate = (date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
+  // Format date for month-based filtering (YYYY-MM)
+  const formatMonth = (date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // Normalize date for comparison (handles different date formats)
+  const normalizeDate = (dateStr) => {
+    if (!dateStr) return '';
+
+    try {
+      // If it's already a Date object
+      if (dateStr instanceof Date) {
+        return formatDate(dateStr);
+      }
+
+      // If it's a string in YYYY-MM-DD format
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+      }
+
+      // If it's a string in M/D/YYYY format (like 5/20/2025)
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+        const parts = dateStr.split('/');
+        const month = parseInt(parts[0], 10);
+        const day = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+
+      // For any other format, try to create a Date object and format it
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return formatDate(date);
+      }
+    } catch (error) {
+      console.error('Error normalizing date:', error, dateStr);
+    }
+
+    // Return original if we can't normalize
+    return dateStr;
+  };
+
+  // Fetch maintenances for a specific date
   const fetchMaintenancesByDate = async (selectedDate) => {
     setIsLoading(true);
     try {
+      console.log('Fetching maintenances for date:', selectedDate);
       const response = await getMaintenancesByDate(selectedDate);
-      setMaintenances(response.data || []);
+      console.log('Response from getMaintenancesByDate:', response);
+
+      // Since we updated getMaintenancesByDate to use getAllMaintenances,
+      // the response format will be consistent with getAllMaintenances
+      if (Array.isArray(response)) {
+        console.log('Setting maintenances from array response:', response);
+        setMaintenances(response);
+      } else if (response && Array.isArray(response.data)) {
+        console.log('Setting maintenances from response.data:', response.data);
+        setMaintenances(response.data);
+      } else {
+        console.log('No maintenances found for date, setting empty array');
+        setMaintenances([]);
+      }
     } catch (error) {
-      console.error('Error fetching maintenances:', error);
+      console.error('Error fetching maintenances for date:', error);
+      setMaintenances([]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fetch all maintenances for the current month
+  const fetchMonthMaintenances = async (year, month) => {
+    try {
+      // Create filters for the current month
+      const filters = {
+        year: year,
+        month: month + 1 // Month is 0-indexed in JS Date, but we need 1-indexed for API
+      };
+
+      const response = await getAllMaintenances(filters);
+
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        setMonthMaintenances(response);
+      } else if (response && Array.isArray(response.data)) {
+        setMonthMaintenances(response.data);
+      } else {
+        setMonthMaintenances([]);
+        console.warn('Unexpected response format from getAllMaintenances:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching month maintenances:', error);
+      setMonthMaintenances([]);
+    }
+  };
+
+  // Fetch all maintenances
+  const fetchAllMaintenances = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getAllMaintenances();
+
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        setAllMaintenances(response);
+        // If not filtering, set maintenances to all maintenances
+        if (!isFiltering) {
+          setMaintenances(response);
+        }
+      } else if (response && Array.isArray(response.data)) {
+        setAllMaintenances(response.data);
+        // If not filtering, set maintenances to all maintenances
+        if (!isFiltering) {
+          setMaintenances(response.data);
+        }
+      } else {
+        setAllMaintenances([]);
+        if (!isFiltering) {
+          setMaintenances([]);
+        }
+        console.warn('Unexpected response format from getAllMaintenances:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching all maintenances:', error);
+      setAllMaintenances([]);
+      if (!isFiltering) {
+        setMaintenances([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Apply filter by scheduled date
+  const applyScheduledDateFilter = async () => {
+    setIsFiltering(true);
+    setIsLoading(true);
+
+    if (!filterDate) {
+      // If no filter date is set, show all maintenances
+      setMaintenances(allMaintenances);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Applying filter for scheduled date:', filterDate);
+
+      // Option 1: Filter from already loaded maintenances
+      if (allMaintenances.length > 0) {
+        console.log('Filtering from loaded maintenances');
+        const filtered = allMaintenances.filter(maintenance => {
+          // Normalize dates for comparison
+          const normalizedMaintenanceDate = normalizeDate(maintenance.scheduled_date);
+          const normalizedFilterDate = normalizeDate(filterDate);
+
+          // Check if scheduled_date matches the filter date
+          const matches = normalizedMaintenanceDate === normalizedFilterDate;
+          console.log(`Maintenance ${maintenance.id}: ${maintenance.scheduled_date} (normalized: ${normalizedMaintenanceDate}) matches ${filterDate} (normalized: ${normalizedFilterDate})? ${matches}`);
+          return matches;
+        });
+
+        console.log('Filtered maintenances:', filtered);
+        setMaintenances(filtered);
+      }
+      // Option 2: Fetch filtered maintenances from API
+      else {
+        console.log('Fetching filtered maintenances from API');
+        const response = await getAllMaintenances({ scheduled_date: filterDate });
+
+        if (Array.isArray(response)) {
+          setMaintenances(response);
+        } else if (response && Array.isArray(response.data)) {
+          setMaintenances(response.data);
+        } else {
+          setMaintenances([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error applying filter:', error);
+      setMaintenances([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Clear filter and show all maintenances
+  const clearFilter = () => {
+    setFilterDate('');
+    setIsFiltering(false);
+    setMaintenances(allMaintenances);
+
+    // Reset to current date view
+    const currentDate = formatDate(date);
+    fetchMaintenancesByDate(currentDate);
   };
 
   const fetchEquipmentsAndTechnicians = async () => {
@@ -589,10 +876,28 @@ const MaintenancePage = () => {
   };
 
   useEffect(() => {
+    // Initial data loading
     const currentDate = formatDate(date);
     fetchMaintenancesByDate(currentDate);
+    fetchMonthMaintenances(date.getFullYear(), date.getMonth());
+    fetchAllMaintenances(); // Fetch all maintenances for filtering
     fetchEquipmentsAndTechnicians();
   }, []);
+
+  // When the month changes, fetch maintenances for the new month
+  useEffect(() => {
+    console.log('Month changed, fetching maintenances for:', date.getFullYear(), date.getMonth() + 1);
+    fetchMonthMaintenances(date.getFullYear(), date.getMonth());
+
+    // Also fetch maintenances for the current date when month changes
+    const currentDate = formatDate(date);
+    fetchMaintenancesByDate(currentDate);
+  }, [date.getFullYear(), date.getMonth()]);
+
+  // Reset pagination when maintenances change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [maintenances.length, isFiltering, filterDate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -602,7 +907,13 @@ const MaintenancePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createMaintenance(newMaintenance);
+      // Ensure dates are properly formatted
+      const formattedMaintenance = {
+        ...newMaintenance,
+        scheduled_date: newMaintenance.scheduled_date || formatDate(new Date()),
+      };
+
+      await createMaintenance(formattedMaintenance);
 
       // Reset form
       setNewMaintenance({
@@ -618,9 +929,15 @@ const MaintenancePage = () => {
       // Show success message
       showNotification('Maintenance added successfully!', 'success');
 
-      // Refresh maintenances list
+      // Refresh maintenances list for current date
       const currentDate = formatDate(date);
       fetchMaintenancesByDate(currentDate);
+
+      // Refresh month maintenances to update calendar indicators
+      fetchMonthMaintenances(date.getFullYear(), date.getMonth());
+
+      // Refresh all maintenances for filtering
+      fetchAllMaintenances();
     } catch (error) {
       console.error('Error adding maintenance:', error);
       showNotification(`Error: ${error.message || 'An error occurred'}`, 'error');
@@ -652,11 +969,18 @@ const MaintenancePage = () => {
   // Check if a date has maintenance scheduled
   const hasMaintenanceOnDate = (checkDate) => {
     const formattedDate = formatDate(checkDate);
-    return maintenances.some(maintenance =>
-      maintenance.scheduled_date === formattedDate ||
-      maintenance.performed_date === formattedDate ||
-      maintenance.next_maintenance_date === formattedDate
-    );
+    const normalizedCheckDate = normalizeDate(formattedDate);
+
+    // Use the monthMaintenances array which contains all maintenances for the current month
+    return monthMaintenances.some(maintenance => {
+      const normalizedScheduledDate = normalizeDate(maintenance.scheduled_date);
+      const normalizedPerformedDate = normalizeDate(maintenance.performed_date);
+      const normalizedNextDate = normalizeDate(maintenance.next_maintenance_date);
+
+      return normalizedScheduledDate === normalizedCheckDate ||
+             normalizedPerformedDate === normalizedCheckDate ||
+             normalizedNextDate === normalizedCheckDate;
+    });
   };
 
   const renderCalendar = () => {
@@ -698,18 +1022,29 @@ const MaintenancePage = () => {
 
       const hasMaintenance = hasMaintenanceOnDate(currentDate);
 
+      // Check if this day is the filtered date
+      const currentDateFormatted = formatDate(new Date(currentYear, currentMonth, day));
+      const isFilteredDate = isFiltering && normalizeDate(filterDate) === normalizeDate(currentDateFormatted);
+
       days.push(
         <CalendarDay
           key={`day-${day}`}
           className={`
             ${isToday ? 'today' : ''}
             ${isSelected ? 'selected' : ''}
+            ${isFilteredDate ? 'filtered' : ''}
             ${hasMaintenance ? 'has-maintenance' : ''}
           `}
           onClick={() => handleDateClick(new Date(currentYear, currentMonth, day))}
+          title={hasMaintenance ? 'Has scheduled maintenance' : 'No scheduled maintenance'}
         >
           {day}
           {hasMaintenance && <span className="maintenance-indicator"></span>}
+          {isFilteredDate && (
+            <span className="filter-indicator">
+              <FontAwesomeIcon icon={faFilter} />
+            </span>
+          )}
         </CalendarDay>
       );
     }
@@ -718,20 +1053,121 @@ const MaintenancePage = () => {
       <CalendarContainer>
         <CalendarHeader>
           <CalendarNavButton
-            onClick={() => {
+            onClick={async () => {
+              // Navigate to previous month
               const newDate = new Date(currentYear, currentMonth - 1, 1);
               setDate(newDate);
-              fetchMaintenancesByDate(formatDate(newDate));
+
+              // If filtering is active, update the filter to the first day of the month
+              if (isFiltering) {
+                const formattedDate = formatDate(newDate);
+                setFilterDate(formattedDate);
+                setIsLoading(true);
+
+                try {
+                  console.log('Month navigation with active filter, new date:', formattedDate);
+
+                  // Try to fetch with specific scheduled_date filter
+                  const response = await getAllMaintenances({ scheduled_date: formattedDate });
+
+                  if (Array.isArray(response) && response.length > 0) {
+                    console.log('Got filtered response from API:', response);
+                    setMaintenances(response);
+                  } else if (response && Array.isArray(response.data) && response.data.length > 0) {
+                    console.log('Got filtered response.data from API:', response.data);
+                    setMaintenances(response.data);
+                  } else {
+                    // If no results with filter, try direct date endpoint
+                    console.log('No results with filter, trying direct date endpoint');
+                    const dateResponse = await getMaintenancesByDate(formattedDate);
+
+                    if (Array.isArray(dateResponse)) {
+                      console.log('Got array response from date endpoint:', dateResponse);
+                      setMaintenances(dateResponse);
+                    } else if (dateResponse && Array.isArray(dateResponse.data)) {
+                      console.log('Got response.data from date endpoint:', dateResponse.data);
+                      setMaintenances(dateResponse.data);
+                    } else {
+                      console.log('No maintenances found for date:', formattedDate);
+                      setMaintenances([]);
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error during month navigation with filter:', error);
+                  setMaintenances([]);
+                } finally {
+                  setIsLoading(false);
+                }
+              } else {
+                // If not filtering, just fetch maintenances for the first day
+                fetchMaintenancesByDate(formatDate(newDate));
+              }
+
+              // Month maintenances will be fetched by the useEffect that watches for month changes
             }}
           >
             <FontAwesomeIcon icon={faChevronLeft} />
           </CalendarNavButton>
-          <CalendarTitle>{monthNames[currentMonth]} {currentYear}</CalendarTitle>
+          <CalendarTitle>
+            {monthNames[currentMonth]} {currentYear}
+            {isFiltering && (
+              <span className="calendar-filter-indicator" title="Calendar filtering is active">
+                <FontAwesomeIcon icon={faFilter} style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }} />
+              </span>
+            )}
+          </CalendarTitle>
           <CalendarNavButton
-            onClick={() => {
+            onClick={async () => {
+              // Navigate to next month
               const newDate = new Date(currentYear, currentMonth + 1, 1);
               setDate(newDate);
-              fetchMaintenancesByDate(formatDate(newDate));
+
+              // If filtering is active, update the filter to the first day of the month
+              if (isFiltering) {
+                const formattedDate = formatDate(newDate);
+                setFilterDate(formattedDate);
+                setIsLoading(true);
+
+                try {
+                  console.log('Month navigation with active filter, new date:', formattedDate);
+
+                  // Try to fetch with specific scheduled_date filter
+                  const response = await getAllMaintenances({ scheduled_date: formattedDate });
+
+                  if (Array.isArray(response) && response.length > 0) {
+                    console.log('Got filtered response from API:', response);
+                    setMaintenances(response);
+                  } else if (response && Array.isArray(response.data) && response.data.length > 0) {
+                    console.log('Got filtered response.data from API:', response.data);
+                    setMaintenances(response.data);
+                  } else {
+                    // If no results with filter, try direct date endpoint
+                    console.log('No results with filter, trying direct date endpoint');
+                    const dateResponse = await getMaintenancesByDate(formattedDate);
+
+                    if (Array.isArray(dateResponse)) {
+                      console.log('Got array response from date endpoint:', dateResponse);
+                      setMaintenances(dateResponse);
+                    } else if (dateResponse && Array.isArray(dateResponse.data)) {
+                      console.log('Got response.data from date endpoint:', dateResponse.data);
+                      setMaintenances(dateResponse.data);
+                    } else {
+                      console.log('No maintenances found for date:', formattedDate);
+                      setMaintenances([]);
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error during month navigation with filter:', error);
+                  setMaintenances([]);
+                } finally {
+                  setIsLoading(false);
+                }
+              } else {
+                // If not filtering, just fetch maintenances for the first day
+                fetchMaintenancesByDate(formatDate(newDate));
+              }
+
+              // Month maintenances will be fetched by the useEffect that watches for month changes
             }}
           >
             <FontAwesomeIcon icon={faChevronRight} />
@@ -754,9 +1190,13 @@ const MaintenancePage = () => {
   };
 
   const renderMaintenanceStatus = (maintenance) => {
+    if (!maintenance) {
+      return <span className="status scheduled">Unknown</span>;
+    }
+
     if (maintenance.performed_date) {
       return <span className="status completed">Completed</span>;
-    } else if (new Date(maintenance.scheduled_date) < new Date()) {
+    } else if (maintenance.scheduled_date && new Date(maintenance.scheduled_date) < new Date()) {
       return <span className="status overdue">Overdue</span>;
     } else {
       return <span className="status scheduled">Scheduled</span>;
@@ -770,17 +1210,135 @@ const MaintenancePage = () => {
         <div className="page-header">
           <h1>Maintenance Management</h1>
           <div className="header-actions">
-            <button className="button primary" onClick={() => document.getElementById('add-maintenance-form').scrollIntoView({ behavior: 'smooth' })}>
+            <div className="filter-container">
+              <div className="filter-group">
+                <label htmlFor="filter-date">
+                  <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
+                  Filter by Scheduled Date:
+                </label>
+                <input
+                  type="date"
+                  id="filter-date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="filter-input"
+                />
+                <button
+                  className="button secondary filter-button"
+                  onClick={applyScheduledDateFilter}
+                  disabled={isLoading}
+                >
+                  <FontAwesomeIcon icon={faSearch} style={{ marginRight: '0.5rem' }} />
+                  Apply Filter
+                </button>
+                <button
+                  className="button secondary filter-button"
+                  onClick={clearFilter}
+                  disabled={isLoading || !isFiltering}
+                >
+                  <FontAwesomeIcon icon={faTimes} style={{ marginRight: '0.5rem' }} />
+                  Clear Filter
+                </button>
+              </div>
+            </div>
+            <button className="button primary" onClick={() => setIsModalOpen(true)}>
+              <FontAwesomeIcon icon={faPlus} style={{ marginRight: '0.5rem' }} />
               Schedule Maintenance
             </button>
           </div>
         </div>
 
+        {/* Maintenance Form Modal */}
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title="Schedule New Maintenance"
+        >
+          <MaintenanceForm
+            onSubmitSuccess={() => {
+              setIsModalOpen(false);
+              // Refresh the maintenance data
+              fetchMaintenancesByDate(formatDate(date));
+              fetchMonthMaintenances(date.getFullYear(), date.getMonth());
+              fetchAllMaintenances();
+            }}
+            onCancel={() => setIsModalOpen(false)}
+            currentDate={formatDate(date)}
+          />
+        </Modal>
+
         <div className="content-grid">
           <section className="calendar-section">
             <div className="card">
               <div className="card-header">
-                <h2>Maintenance Calendar</h2>
+                <h2>
+                  Maintenance Calendar
+                  {isFiltering && filterDate && (
+                    <span className="filter-badge" style={{ marginLeft: '0.75rem', fontSize: '0.75rem' }}>
+                      <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
+                      Filtering Active
+                    </span>
+                  )}
+                </h2>
+                <div className="calendar-actions">
+                  <button
+                    className={`button ${isFiltering ? 'primary' : 'secondary'}`}
+                    onClick={async () => {
+                      if (isFiltering) {
+                        // If already filtering, clear the filter
+                        clearFilter();
+                      } else {
+                        // If not filtering, apply filter for current date
+                        const formattedDate = formatDate(date);
+                        setFilterDate(formattedDate);
+                        setIsFiltering(true);
+                        setIsLoading(true);
+
+                        try {
+                          console.log('Filter by Calendar button clicked, date:', formattedDate);
+
+                          // Try to fetch with specific scheduled_date filter
+                          const response = await getAllMaintenances({ scheduled_date: formattedDate });
+
+                          if (Array.isArray(response) && response.length > 0) {
+                            console.log('Got filtered response from API:', response);
+                            setMaintenances(response);
+                          } else if (response && Array.isArray(response.data) && response.data.length > 0) {
+                            console.log('Got filtered response.data from API:', response.data);
+                            setMaintenances(response.data);
+                          } else {
+                            // If no results with filter, try direct date endpoint
+                            console.log('No results with filter, trying direct date endpoint');
+                            const dateResponse = await getMaintenancesByDate(formattedDate);
+
+                            if (Array.isArray(dateResponse)) {
+                              console.log('Got array response from date endpoint:', dateResponse);
+                              setMaintenances(dateResponse);
+                            } else if (dateResponse && Array.isArray(dateResponse.data)) {
+                              console.log('Got response.data from date endpoint:', dateResponse.data);
+                              setMaintenances(dateResponse.data);
+                            } else {
+                              console.log('No maintenances found for date:', formattedDate);
+                              setMaintenances([]);
+                            }
+                          }
+                        } catch (error) {
+                          console.error('Error applying calendar filter:', error);
+                          setMaintenances([]);
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }
+                    }}
+                    title={isFiltering ? "Clear calendar filter" : "Filter by calendar selection"}
+                  >
+                    <FontAwesomeIcon
+                      icon={isFiltering ? faTimes : faFilter}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    {isFiltering ? 'Clear Filter' : 'Filter by Calendar'}
+                  </button>
+                </div>
               </div>
               <div className="card-body">
                 {renderCalendar()}
@@ -791,7 +1349,20 @@ const MaintenancePage = () => {
           <section className="maintenance-list-section">
             <div className="card">
               <div className="card-header">
-                <h2>Maintenances for {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h2>
+                <h2>
+                  {isFiltering && filterDate
+                    ? `Maintenances Scheduled for ${new Date(filterDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    : isFiltering
+                      ? 'All Maintenances'
+                      : `Maintenances for ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                  }
+                </h2>
+                {isFiltering && (
+                  <span className="filter-badge">
+                    <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
+                    Filtered
+                  </span>
+                )}
               </div>
               <div className="card-body">
                 {isLoading ? (
@@ -802,50 +1373,93 @@ const MaintenancePage = () => {
                 ) : maintenances.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-icon">📅</div>
-                    <p>No maintenance scheduled for this date.</p>
+                    {isFiltering && filterDate ? (
+                      <p>No maintenance scheduled for {new Date(filterDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.</p>
+                    ) : isFiltering ? (
+                      <p>No maintenance records found.</p>
+                    ) : (
+                      <p>No maintenance scheduled for this date.</p>
+                    )}
+                    {isFiltering && (
+                      <button
+                        className="button secondary"
+                        onClick={clearFilter}
+                        style={{ marginTop: '1rem' }}
+                      >
+                        <FontAwesomeIcon icon={faTimes} style={{ marginRight: '0.5rem' }} />
+                        Clear Filter
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  <div className="maintenance-cards">
-                    {maintenances.map((maintenance) => (
-                      <div key={maintenance.id} className="maintenance-card">
-                        <div className="maintenance-card-header">
-                          <h3>{maintenance.equipment?.name || 'Unknown Equipment'}</h3>
-                          {renderMaintenanceStatus(maintenance)}
-                        </div>
-                        <div className="maintenance-card-body">
-                          <div className="info-row">
-                            <span className="label">Type:</span>
-                            <span className="value">{maintenance.maintenance_type}</span>
+                  <div>
+                    <div className="maintenance-cards">
+                      {maintenances
+                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                        .map((maintenance) => (
+                        <div key={maintenance.id || Math.random()} className="maintenance-card">
+                          <div className="maintenance-card-header">
+                            <h3>
+                              {maintenance.equipment?.name ||
+                               (equipments.find(e => e.id === maintenance.equipment_id)?.name) ||
+                               'Unknown Equipment'}
+                            </h3>
+                            {renderMaintenanceStatus(maintenance)}
                           </div>
-                          <div className="info-row">
-                            <span className="label">Scheduled:</span>
-                            <span className="value">{new Date(maintenance.scheduled_date).toLocaleDateString()}</span>
-                          </div>
-                          {maintenance.performed_date && (
+                          <div className="maintenance-card-body">
                             <div className="info-row">
-                              <span className="label">Performed:</span>
-                              <span className="value">{new Date(maintenance.performed_date).toLocaleDateString()}</span>
+                              <span className="label">Type:</span>
+                              <span className="value">{maintenance.maintenance_type || 'Not specified'}</span>
                             </div>
-                          )}
-                          {maintenance.next_maintenance_date && (
+                            {maintenance.scheduled_date && (
+                              <div className="info-row">
+                                <span className="label">Scheduled:</span>
+                                <span className="value">
+                                  {new Date(maintenance.scheduled_date).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                            {maintenance.performed_date && (
+                              <div className="info-row">
+                                <span className="label">Performed:</span>
+                                <span className="value">
+                                  {new Date(maintenance.performed_date).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                            {maintenance.next_maintenance_date && (
+                              <div className="info-row">
+                                <span className="label">Next:</span>
+                                <span className="value">
+                                  {new Date(maintenance.next_maintenance_date).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
                             <div className="info-row">
-                              <span className="label">Next:</span>
-                              <span className="value">{new Date(maintenance.next_maintenance_date).toLocaleDateString()}</span>
+                              <span className="label">Technician:</span>
+                              <span className="value">
+                                {maintenance.technician?.full_name ||
+                                 (technicians.find(t => t.id === maintenance.technician_id)?.full_name) ||
+                                 'Not assigned'}
+                              </span>
                             </div>
-                          )}
-                          <div className="info-row">
-                            <span className="label">Technician:</span>
-                            <span className="value">{maintenance.technician?.full_name || 'Not assigned'}</span>
+                            {maintenance.observations && (
+                              <div className="observations">
+                                <span className="label">Observations:</span>
+                                <p>{maintenance.observations}</p>
+                              </div>
+                            )}
                           </div>
-                          {maintenance.observations && (
-                            <div className="observations">
-                              <span className="label">Observations:</span>
-                              <p>{maintenance.observations}</p>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    <Pagination
+                      currentPage={currentPage}
+                      totalItems={maintenances.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                    />
                   </div>
                 )}
               </div>
@@ -853,135 +1467,7 @@ const MaintenancePage = () => {
           </section>
         </div>
 
-        <section id="add-maintenance-form" className="maintenance-form-section">
-          <div className="card">
-            <div className="card-header">
-              <h2>Schedule New Maintenance</h2>
-            </div>
-            <div className="card-body">
-              <form onSubmit={handleSubmit}>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label htmlFor="equipment_id">Equipment</label>
-                    <select
-                      id="equipment_id"
-                      name="equipment_id"
-                      value={newMaintenance.equipment_id}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select equipment</option>
-                      {equipments.map((equipment) => (
-                        <option key={equipment.id} value={equipment.id}>
-                          {equipment.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
 
-                  <div className="form-group">
-                    <label htmlFor="maintenance_type">Maintenance Type</label>
-                    <select
-                      id="maintenance_type"
-                      name="maintenance_type"
-                      value={newMaintenance.maintenance_type}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select type</option>
-                      <option value="Preventive">Preventive</option>
-                      <option value="Corrective">Corrective</option>
-                      <option value="Predictive">Predictive</option>
-                      <option value="Condition-based">Condition-based</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="scheduled_date">Scheduled Date</label>
-                    <input
-                      type="date"
-                      id="scheduled_date"
-                      name="scheduled_date"
-                      value={newMaintenance.scheduled_date}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="performed_date">Performed Date</label>
-                    <input
-                      type="date"
-                      id="performed_date"
-                      name="performed_date"
-                      value={newMaintenance.performed_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="next_maintenance_date">Next Maintenance Date</label>
-                    <input
-                      type="date"
-                      id="next_maintenance_date"
-                      name="next_maintenance_date"
-                      value={newMaintenance.next_maintenance_date}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="technician_id">Technician</label>
-                    <select
-                      id="technician_id"
-                      name="technician_id"
-                      value={newMaintenance.technician_id}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select technician</option>
-                      {technicians.map((technician) => (
-                        <option key={technician.id} value={technician.id}>
-                          {technician.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group full-width">
-                  <label htmlFor="observations">Observations</label>
-                  <textarea
-                    id="observations"
-                    name="observations"
-                    value={newMaintenance.observations}
-                    onChange={handleInputChange}
-                    placeholder="Enter any relevant observations or notes"
-                  />
-                </div>
-
-                <div className="form-actions">
-                  <button type="button" className="button secondary" onClick={() => {
-                    setNewMaintenance({
-                      equipment_id: '',
-                      maintenance_type: '',
-                      scheduled_date: '',
-                      performed_date: '',
-                      next_maintenance_date: '',
-                      observations: '',
-                      technician_id: '',
-                    });
-                  }}>
-                    Clear Form
-                  </button>
-                  <button type="submit" className="button primary">
-                    Schedule Maintenance
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </section>
       </main>
 
       <style jsx>{`
@@ -1288,6 +1774,46 @@ const MaintenancePage = () => {
           line-height: 1.5;
         }
 
+        /* Pagination Styles */
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-top: 1.5rem;
+          gap: 1rem;
+        }
+
+        .pagination-button {
+          background-color: white;
+          border: 1px solid var(--gray-300);
+          color: var(--gray-700);
+          border-radius: var(--radius);
+          width: 2.5rem;
+          height: 2.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: var(--transition);
+        }
+
+        .pagination-button:hover:not(:disabled) {
+          background-color: var(--gray-100);
+          color: var(--primary-color);
+          border-color: var(--primary-color);
+        }
+
+        .pagination-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .pagination-info {
+          font-size: 0.875rem;
+          color: var(--gray-600);
+          font-weight: 500;
+        }
+
         /* Form */
         .form-grid {
           display: grid;
@@ -1452,6 +1978,96 @@ const MaintenancePage = () => {
 
         .notification.error {
           background-color: var(--danger-color);
+        }
+
+        /* Filter Styles */
+        .filter-container {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 1rem;
+          background-color: #f8fafc;
+          padding: 1rem;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .filter-group {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+        }
+
+        .filter-group label {
+          font-weight: 500;
+          color: #475569;
+          display: flex;
+          align-items: center;
+        }
+
+        .filter-input {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          font-size: 0.875rem;
+        }
+
+        .filter-button {
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+        }
+
+        .filter-badge {
+          display: inline-flex;
+          align-items: center;
+          background-color: #dbeafe;
+          color: #2563eb;
+          font-size: 0.75rem;
+          font-weight: 500;
+          padding: 0.25rem 0.75rem;
+          border-radius: 9999px;
+        }
+
+        @media (max-width: 768px) {
+          .header-actions {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .filter-group {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .filter-group label {
+            margin-bottom: 0.5rem;
+          }
+        }
+
+        /* Calendar Filter Styles */
+        .calendar-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .calendar-filter-indicator {
+          color: #7c3aed;
+        }
+
+        @media (max-width: 768px) {
+          .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .calendar-actions {
+            margin-top: 0.75rem;
+            width: 100%;
+          }
+
+          .calendar-actions button {
+            width: 100%;
+          }
         }
       `}</style>
     </div>

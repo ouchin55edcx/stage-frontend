@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import MenuEmploye from '../pages/MenuEmploye';
 import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faLock, faCheckCircle, faTimesCircle, faUser } from '@fortawesome/free-solid-svg-icons'; // Ajout de faUser
+import { faEnvelope, faLock, faCheckCircle, faTimesCircle, faUser, faIdCard, faPhone, faVial } from '@fortawesome/free-solid-svg-icons';
+import { getUserInfo, updateProfile, testApiConnection, testProfileEndpoint } from '../services/api';
 
 const Container = styled.div`
   display: flex;
@@ -124,35 +125,104 @@ const AlertMessage = styled.div`
 `;
 
 export default function Profile() {
-  const [userData, setUserData] = useState({ email: '' });
+  const [userData, setUserData] = useState({
+    email: '',
+    full_name: '',
+    role: '',
+    poste: '',
+    phone: ''
+  });
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        setUserData({ email: 'employe@examplecom' });
+        setLoading(true);
+
+        // First test API connection
+        console.log('Testing API connection from Profile page...');
+        const connectionTest = await testApiConnection();
+        console.log('API connection test result:', connectionTest);
+
+        if (!connectionTest.success) {
+          setError(`Impossible de se connecter à l'API: ${connectionTest.message}`);
+          setLoading(false);
+          return;
+        }
+
+        const response = await getUserInfo();
+        if (response && response.user) {
+          setUserData({
+            email: response.user.email,
+            full_name: response.user.full_name,
+            role: response.user.role,
+            poste: response.user.poste || '',
+            phone: response.user.phone || ''
+          });
+        }
       } catch (error) {
         console.error('Erreur de récupération des données', error);
+        setError('Impossible de récupérer les informations utilisateur');
+      } finally {
+        setLoading(false);
       }
     };
     fetchUserData();
   }, []);
 
-  const handleEmailUpdate = async (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    if (!newEmail || !currentPassword) {
-      setError('Tous les champs doivent être remplis');
-      return;
+    try {
+      setUpdating(true);
+      setError('');
+      setSuccess('');
+
+      console.log('Profile form submitted, starting update...');
+
+      // Prepare profile data
+      const profileData = {
+        full_name: userData.full_name,
+        email: userData.email
+      };
+
+      // Add employer-specific fields if user is an employer
+      if (userData.role.toLowerCase() === 'employer') {
+        profileData.poste = userData.poste;
+        profileData.phone = userData.phone;
+      }
+
+      console.log('Sending profile data:', profileData);
+
+      const response = await updateProfile(profileData);
+      console.log('Profile update response:', response);
+
+      setSuccess('Profil mis à jour avec succès');
+
+      // Update local user data with response if needed
+      if (response && response.user) {
+        setUserData({
+          ...userData,
+          ...response.user
+        });
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response,
+        stack: err.stack
+      });
+      setError(err.response?.data?.message || 'Erreur lors de la mise à jour du profil');
+    } finally {
+      setUpdating(false);
     }
-    setSuccess('Email modifié avec succès');
-    setUserData({ ...userData, email: newEmail });
-    setNewEmail('');
-    setCurrentPassword('');
   };
 
   const handlePasswordUpdate = async (e) => {
@@ -174,94 +244,131 @@ export default function Profile() {
   return (
     <Container>
       <MenuEmploye />
-      
+
       <MainContent>
         <ProfileHeader>
           <FontAwesomeIcon icon={faUser} />
           Mon Profil
         </ProfileHeader>
 
-        <FormGrid>
-          {/* Formulaire Email */}
-          <FormSection>
-            <SectionTitle>
-              <FontAwesomeIcon icon={faEnvelope} />
-              Informations de connexion
-            </SectionTitle>
-            
-            <div style={{ marginBottom: '1.5rem' }}>
-              <strong>Email actuel : </strong>
-              <span style={{ color: '#555' }}>{userData.email}</span>
-            </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>Chargement des informations utilisateur...</p>
+          </div>
+        ) : (
+          <FormGrid>
+            {/* Formulaire de Profil */}
+            <FormSection>
+              <SectionTitle>
+                <FontAwesomeIcon icon={faUser} />
+                Informations de Profil
+              </SectionTitle>
 
-            <form onSubmit={handleEmailUpdate}>
-              <InputGroup>
-                <StyledInput
-                  type="email"
-                  placeholder="Nouvel email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                />
-              </InputGroup>
+              <form onSubmit={(e) => {
+                console.log('Profile form submitted');
+                handleProfileUpdate(e);
+              }}>
+                <InputGroup>
+                  <label>Nom Complet</label>
+                  <StyledInput
+                    type="text"
+                    placeholder="Votre nom complet"
+                    value={userData.full_name}
+                    onChange={(e) => setUserData({...userData, full_name: e.target.value})}
+                  />
+                </InputGroup>
 
-              <InputGroup>
-                <StyledInput
-                  type="password"
-                  placeholder="Mot de passe actuel"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
-              </InputGroup>
+                <InputGroup>
+                  <label>Email</label>
+                  <StyledInput
+                    type="email"
+                    placeholder="Votre email"
+                    value={userData.email}
+                    onChange={(e) => setUserData({...userData, email: e.target.value})}
+                  />
+                </InputGroup>
 
-              <ActionButton type="submit">
-                <FontAwesomeIcon icon={faCheckCircle} />
-                Mettre à jour l'email
-              </ActionButton>
-            </form>
-          </FormSection>
+                {/* Only show these fields for employers */}
+                {userData.role && userData.role.toLowerCase() === 'employer' && (
+                  <>
+                    <InputGroup>
+                      <label>
+                        <FontAwesomeIcon icon={faIdCard} style={{ marginRight: '0.5rem' }} />
+                        Poste
+                      </label>
+                      <StyledInput
+                        type="text"
+                        placeholder="Votre poste"
+                        value={userData.poste || ''}
+                        onChange={(e) => setUserData({...userData, poste: e.target.value})}
+                      />
+                    </InputGroup>
 
-          {/* Formulaire Mot de passe */}
-          <FormSection>
-            <SectionTitle>
-              <FontAwesomeIcon icon={faLock} />
-              Modifier le mot de passe
-            </SectionTitle>
+                    <InputGroup>
+                      <label>
+                        <FontAwesomeIcon icon={faPhone} style={{ marginRight: '0.5rem' }} />
+                        Téléphone
+                      </label>
+                      <StyledInput
+                        type="text"
+                        placeholder="Votre numéro de téléphone"
+                        value={userData.phone || ''}
+                        onChange={(e) => setUserData({...userData, phone: e.target.value})}
+                      />
+                    </InputGroup>
+                  </>
+                )}
 
-            <form onSubmit={handlePasswordUpdate}>
-              <InputGroup>
-                <StyledInput
-                  type="password"
-                  placeholder="Nouveau mot de passe"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-              </InputGroup>
+                <ActionButton type="submit" disabled={updating}>
+                  <FontAwesomeIcon icon={faCheckCircle} />
+                  {updating ? 'Mise à jour en cours...' : 'Mettre à jour le profil'}
+                </ActionButton>
+              </form>
+            </FormSection>
 
-              <InputGroup>
-                <StyledInput
-                  type="password"
-                  placeholder="Confirmer le mot de passe"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </InputGroup>
+            {/* Formulaire Mot de passe */}
+            <FormSection>
+              <SectionTitle>
+                <FontAwesomeIcon icon={faLock} />
+                Modifier le mot de passe
+              </SectionTitle>
 
-              <InputGroup>
-                <StyledInput
-                  type="password"
-                  placeholder="Mot de passe actuel"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
-              </InputGroup>
+              <form onSubmit={handlePasswordUpdate}>
+                <InputGroup>
+                  <StyledInput
+                    type="password"
+                    placeholder="Nouveau mot de passe"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </InputGroup>
 
-              <ActionButton type="submit">
-                <FontAwesomeIcon icon={faCheckCircle} />
-                Changer le mot de passe
-              </ActionButton>
-            </form>
-          </FormSection>
-        </FormGrid>
+                <InputGroup>
+                  <StyledInput
+                    type="password"
+                    placeholder="Confirmer le mot de passe"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </InputGroup>
+
+                <InputGroup>
+                  <StyledInput
+                    type="password"
+                    placeholder="Mot de passe actuel"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                </InputGroup>
+
+                <ActionButton type="submit">
+                  <FontAwesomeIcon icon={faCheckCircle} />
+                  Changer le mot de passe
+                </ActionButton>
+              </form>
+            </FormSection>
+          </FormGrid>
+        )}
 
         {/* Messages de feedback */}
         {error && (
