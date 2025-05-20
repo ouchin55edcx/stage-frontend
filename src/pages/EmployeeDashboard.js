@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import MenuEmploye from './MenuEmploye';
 import { fetchMyStatistics } from '../services/statistics';
+import { API_URL } from '../services/api';
 
 export default function EmployeeDashboard() {
   const [equipements, setEquipements] = useState([]);
@@ -251,8 +252,8 @@ export default function EmployeeDashboard() {
 
         // Then fetch equipment and interventions
         try {
-          const resEquip = await axios.get('http://localhost:5000/api/mes-equipements');
-          const resInter = await axios.get('http://localhost:5000/api/mes-interventions');
+          const resEquip = await axios.get(`${API_URL}/mes-equipements`);
+          const resInter = await axios.get(`${API_URL}/mes-interventions`);
           setEquipements(resEquip.data);
           setInterventions(resInter.data);
         } catch (dataError) {
@@ -268,15 +269,15 @@ export default function EmployeeDashboard() {
   const handleReportIssue = async () => {
     if (newIssue && selectedEquipment) {
       try {
-        await axios.post('http://localhost:5000/api/interventions', {
+        await axios.post(`${API_URL}/interventions`, {
           description: newIssue,
           equipment_id: selectedEquipment,
           status: 'pending',
         });
 
         const [equipRes, interRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/mes-equipements'),
-          axios.get('http://localhost:5000/api/mes-interventions'),
+          axios.get(`${API_URL}/mes-equipements`),
+          axios.get(`${API_URL}/mes-interventions`),
         ]);
 
         setEquipements(equipRes.data);

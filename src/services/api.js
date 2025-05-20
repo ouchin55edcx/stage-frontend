@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api';
+export const API_URL = 'http://127.0.0.1:8000/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -30,7 +30,7 @@ export const loginUser = async (email, password) => {
 
 export const getUserInfo = async () => {
   try {
-    const response = await api.get(`${API_URL}/user`);
+    const response = await api.get('/user');
     return response.data;
   } catch (error) {
     throw error;
