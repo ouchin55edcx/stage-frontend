@@ -17,6 +17,7 @@ import EquipementsList from './pages/EquipementsList';
 import InterventionsList from './pages/InterventionsList';
 import ServicesList from './pages/ServicesList';
 import LicencesList from './pages/LicencesList';
+import LicenseManagement from './pages/LicenseManagement'; // New combined license management page
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceListPage from './pages/MaintenanceListPage';
 import Notifications from './pages/Notifications';
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="/equipements/edit/:id" element={<EditEquipement />} />
           <Route path="/admin/licences" element={<Licences />} />
           <Route path="/admin/licences/list" element={<LicencesList />} />
+          <Route path="/admin/licences/management" element={<LicenseManagement />} />
           <Route path="/admin/maintenance" element={<MaintenancePage />} />
           <Route path="/admin/maintenance/list" element={<MaintenanceListPage />} />
           <Route path="/admin/edit-maintenance/:id" element={<EditMaintenance />} />
