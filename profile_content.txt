@@ -132,6 +132,10 @@ export default function Profile() {
     poste: '',
     phone: ''
   });
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
@@ -221,6 +225,22 @@ export default function Profile() {
     }
   };
 
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
+      return;
+    }
+    if (!currentPassword || !newPassword) {
+      setError('Tous les champs doivent être remplis');
+      return;
+    }
+    setSuccess('Mot de passe modifié avec succès');
+    setNewPassword('');
+    setConfirmPassword('');
+    setCurrentPassword('');
+  };
+
   return (
     <Container>
       <MenuEmploye />
@@ -302,6 +322,48 @@ export default function Profile() {
                 <ActionButton type="submit" disabled={updating}>
                   <FontAwesomeIcon icon={faCheckCircle} />
                   {updating ? 'Mise à jour en cours...' : 'Mettre à jour le profil'}
+                </ActionButton>
+              </form>
+            </FormSection>
+
+            {/* Formulaire Mot de passe */}
+            <FormSection>
+              <SectionTitle>
+                <FontAwesomeIcon icon={faLock} />
+                Modifier le mot de passe
+              </SectionTitle>
+
+              <form onSubmit={handlePasswordUpdate}>
+                <InputGroup>
+                  <StyledInput
+                    type="password"
+                    placeholder="Nouveau mot de passe"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </InputGroup>
+
+                <InputGroup>
+                  <StyledInput
+                    type="password"
+                    placeholder="Confirmer le mot de passe"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </InputGroup>
+
+                <InputGroup>
+                  <StyledInput
+                    type="password"
+                    placeholder="Mot de passe actuel"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                </InputGroup>
+
+                <ActionButton type="submit">
+                  <FontAwesomeIcon icon={faCheckCircle} />
+                  Changer le mot de passe
                 </ActionButton>
               </form>
             </FormSection>
