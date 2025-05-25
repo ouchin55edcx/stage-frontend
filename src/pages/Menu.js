@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faUsers, faServer, faHome,
-  faChartPie, faCog, faSignOutAlt, faBoxes, faCalendarAlt, faList, faKey, faWrench
+  faChartPie, faCog, faSignOutAlt, faBoxes, faCalendarAlt, faList, faKey, faWrench,
+  faBell
 } from '@fortawesome/free-solid-svg-icons';
 
 const Menu = ({ notifications = [] }) => {
@@ -283,6 +284,10 @@ const Menu = ({ notifications = [] }) => {
             </Link>
           </div>
         )}
+
+        <Link to="/notifications" style={styles.menuItem}>
+          <span style={styles.icon}><FontAwesomeIcon icon={faBell} /></span>Notifications
+        </Link>
 
         <Link to="/admin/settings" style={styles.menuItem}>
           <span style={styles.icon}><FontAwesomeIcon icon={faCog} /></span>Paramètres
