@@ -87,7 +87,6 @@ function Users() {
   const [formData, setFormData] = useState({
     nom: '',
     email: '',
-    password: '',
     poste: '',
     tele: '',
     service_id: '',
@@ -115,7 +114,6 @@ function Users() {
       poste: formData.poste,
       phone: formData.tele,
       service_id: formData.service_id,
-      password: formData.password,
     };
     try {
       await createEmployer(employerData);
@@ -123,7 +121,6 @@ function Users() {
       setFormData({
         nom: '',
         email: '',
-        password: '',
         poste: '',
         tele: '',
         service_id: '',
@@ -147,10 +144,6 @@ function Users() {
             <FormGroup>
               <Label>Email</Label>
               <Input type="email" name="email" value={formData.email} onChange={handleChange} required />
-            </FormGroup>
-            <FormGroup>
-              <Label>Mot de Passe</Label>
-              <Input type="password" name="password" value={formData.password} onChange={handleChange} required />
             </FormGroup>
             <FormGroup>
               <Label>Poste</Label>

@@ -1400,9 +1400,12 @@ const MaintenancePage = () => {
                         <div key={maintenance.id || Math.random()} className="maintenance-card">
                           <div className="maintenance-card-header">
                             <h3>
-                              {maintenance.equipment?.name ||
-                               (equipments.find(e => e.id === maintenance.equipment_id)?.name) ||
-                               'Unknown Equipment'}
+                              {maintenance.intervention?.equipment?.name || 'Unknown Equipment'}
+                              {maintenance.intervention && (
+                                <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: '#6b7280' }}>
+                                  {' '}(Intervention: {new Date(maintenance.intervention.date).toLocaleDateString()})
+                                </span>
+                              )}
                             </h3>
                             {renderMaintenanceStatus(maintenance)}
                           </div>
@@ -1419,22 +1422,7 @@ const MaintenancePage = () => {
                                 </span>
                               </div>
                             )}
-                            {maintenance.performed_date && (
-                              <div className="info-row">
-                                <span className="label">Performed:</span>
-                                <span className="value">
-                                  {new Date(maintenance.performed_date).toLocaleDateString()}
-                                </span>
-                              </div>
-                            )}
-                            {maintenance.next_maintenance_date && (
-                              <div className="info-row">
-                                <span className="label">Next:</span>
-                                <span className="value">
-                                  {new Date(maintenance.next_maintenance_date).toLocaleDateString()}
-                                </span>
-                              </div>
-                            )}
+
                             <div className="info-row">
                               <span className="label">Technician:</span>
                               <span className="value">

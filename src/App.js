@@ -20,6 +20,8 @@ import LicencesList from './pages/LicencesList';
 import LicenseManagement from './pages/LicenseManagement'; // New combined license management page
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceListPage from './pages/MaintenanceListPage';
+import MaintenanceDebugPage from './pages/MaintenanceDebugPage';
+import AddMaintenancePage from './pages/AddMaintenancePage';
 import Notifications from './pages/Notifications';
 
 import EditUser from './pages/EditUser'; // Page pour modifier un utilisateur
@@ -84,6 +86,8 @@ export default function App() {
           <Route path="/admin/licences/management" element={<LicenseManagement />} />
           <Route path="/admin/maintenance" element={<MaintenancePage />} />
           <Route path="/admin/maintenance/list" element={<MaintenanceListPage />} />
+          <Route path="/admin/maintenance/add" element={<AddMaintenancePage />} />
+          <Route path="/admin/maintenance/debug" element={<MaintenanceDebugPage />} />
           <Route path="/admin/edit-maintenance/:id" element={<EditMaintenance />} />
           <Route path="/edit-intervention/:id" element={<EditIntervention />} />
           <Route path="/edit-service/:id" element={<EditService />} /> {/* La route pour EditService */}

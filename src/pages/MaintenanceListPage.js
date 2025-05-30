@@ -194,10 +194,9 @@ const MaintenanceListPage = () => {
               <thead>
                 <tr>
                   <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Equipment</th>
+                  <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Intervention Date</th>
                   <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Type</th>
                   <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Scheduled Date</th>
-                  <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Performed Date</th>
-                  <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Next Maintenance</th>
                   <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Observations</th>
                   <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'left' }}>Technician</th>
                   <th style={{ padding: '12px', backgroundColor: '#1e3a8a', color: 'white', textAlign: 'center' }}>Actions</th>
@@ -207,11 +206,10 @@ const MaintenanceListPage = () => {
                 {maintenances.length > 0 ? (
                   maintenances.map((maintenance) => (
                     <tr key={maintenance.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '12px' }}>{maintenance.equipment?.name || 'Unknown Equipment'}</td>
+                      <td style={{ padding: '12px' }}>{maintenance.intervention?.equipment?.name || 'Unknown Equipment'}</td>
+                      <td style={{ padding: '12px' }}>{maintenance.intervention?.date ? new Date(maintenance.intervention.date).toLocaleDateString() : '-'}</td>
                       <td style={{ padding: '12px' }}>{maintenance.maintenance_type}</td>
                       <td style={{ padding: '12px' }}>{maintenance.scheduled_date ? new Date(maintenance.scheduled_date).toLocaleDateString() : '-'}</td>
-                      <td style={{ padding: '12px' }}>{maintenance.performed_date ? new Date(maintenance.performed_date).toLocaleDateString() : 'Not performed'}</td>
-                      <td style={{ padding: '12px' }}>{maintenance.next_maintenance_date ? new Date(maintenance.next_maintenance_date).toLocaleDateString() : 'Not scheduled'}</td>
                       <td style={{ padding: '12px' }}>{maintenance.observations || '-'}</td>
                       <td style={{ padding: '12px' }}>{maintenance.technician?.full_name || 'Not assigned'}</td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -232,7 +230,7 @@ const MaintenanceListPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
                       No maintenance records found for this period.
                     </td>
                   </tr>

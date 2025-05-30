@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { createMaintenance } from '../services/maintenance';
-import { getAllEquipments } from '../services/equipment';
-import { fetchEmployers } from '../services/employer';
+import { fetchInterventions } from '../services/intervention';
 
 const FormGrid = styled.div`
   display: grid;
@@ -132,7 +131,7 @@ const ErrorMessage = styled.div`
 
 const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
   const [formData, setFormData] = useState({
-    equipment_id: '',
+    intervention_id: '',
     maintenance_type: '',
     scheduled_date: currentDate ? new Date(currentDate).toISOString().split('T')[0] : '',
     performed_date: '',
@@ -141,22 +140,17 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
     technician_id: '',
   });
 
-  const [equipments, setEquipments] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
+  const [interventions, setInterventions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch equipments and technicians when component mounts
+  // Fetch interventions when component mounts
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [equipmentsResponse, techniciansResponse] = await Promise.all([
-          getAllEquipments(),
-          fetchEmployers()
-        ]);
-        
-        setEquipments(equipmentsResponse);
-        setTechnicians(techniciansResponse);
+        const interventionsResponse = await fetchInterventions();
+        console.log('Fetched interventions:', interventionsResponse); // Debug log
+        setInterventions(interventionsResponse);
       } catch (error) {
         console.error('Error fetching form data:', error);
         setError('Failed to load form data. Please try again.');
@@ -168,7 +162,20 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'intervention_id') {
+      // When intervention is selected, automatically set the technician_id and equipment_id
+      const selectedIntervention = interventions.find(intervention => intervention.id === parseInt(value));
+      console.log('Selected intervention:', selectedIntervention); // Debug log
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        technician_id: selectedIntervention?.technician_id || selectedIntervention?.intervenant_id || '',
+        equipment_id: selectedIntervention?.equipment_id || selectedIntervention?.equipement_id || ''
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -176,12 +183,33 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
     setIsLoading(true);
     setError('');
 
+    // Client-side validation
+    if (!formData.intervention_id) {
+      setError('Please select an intervention');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.maintenance_type) {
+      setError('Please select a maintenance type');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.scheduled_date) {
+      setError('Please select a scheduled date');
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      console.log('Submitting maintenance form with data:', formData);
       await createMaintenance(formData);
       onSubmitSuccess();
     } catch (error) {
       console.error('Error creating maintenance:', error);
-      setError('Failed to create maintenance. Please try again.');
+      // Show the specific error message from the server
+      setError(error.message || 'Failed to create maintenance. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +217,7 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
 
   const handleReset = () => {
     setFormData({
-      equipment_id: '',
+      intervention_id: '',
       maintenance_type: '',
       scheduled_date: currentDate ? new Date(currentDate).toISOString().split('T')[0] : '',
       performed_date: '',
@@ -203,21 +231,21 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
   return (
     <form onSubmit={handleSubmit}>
       {error && <ErrorMessage>{error}</ErrorMessage>}
-      
+
       <FormGrid>
         <FormGroup>
-          <FormLabel htmlFor="equipment_id">Equipment</FormLabel>
+          <FormLabel htmlFor="intervention_id">Intervention</FormLabel>
           <FormSelect
-            id="equipment_id"
-            name="equipment_id"
-            value={formData.equipment_id}
+            id="intervention_id"
+            name="intervention_id"
+            value={formData.intervention_id}
             onChange={handleChange}
             required
           >
-            <option value="">Select equipment</option>
-            {equipments.map((equipment) => (
-              <option key={equipment.id} value={equipment.id}>
-                {equipment.name}
+            <option value="">Select intervention</option>
+            {interventions.map((intervention) => (
+              <option key={intervention.id} value={intervention.id}>
+                Technician: {intervention.technician_name || intervention.nom_inter || 'Unknown'} | Equipment: {intervention.equipment?.name || 'Unknown'} | Date: {new Date(intervention.date || intervention.date_intervention).toLocaleDateString()}
               </option>
             ))}
           </FormSelect>
@@ -253,17 +281,6 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel htmlFor="performed_date">Performed Date</FormLabel>
-          <FormInput
-            type="date"
-            id="performed_date"
-            name="performed_date"
-            value={formData.performed_date}
-            onChange={handleChange}
-          />
-        </FormGroup>
-
-        <FormGroup>
           <FormLabel htmlFor="next_maintenance_date">Next Maintenance Date</FormLabel>
           <FormInput
             type="date"
@@ -275,21 +292,20 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel htmlFor="technician_id">Technician</FormLabel>
-          <FormSelect
-            id="technician_id"
-            name="technician_id"
-            value={formData.technician_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select technician</option>
-            {technicians.map((technician) => (
-              <option key={technician.id} value={technician.id}>
-                {technician.full_name}
-              </option>
-            ))}
-          </FormSelect>
+          <FormLabel htmlFor="technician_display">Technician</FormLabel>
+          <FormInput
+            id="technician_display"
+            name="technician_display"
+            value={
+              formData.intervention_id
+                ? interventions.find(i => i.id === parseInt(formData.intervention_id))?.technician_name ||
+                  interventions.find(i => i.id === parseInt(formData.intervention_id))?.nom_inter ||
+                  'Unknown Technician'
+                : 'Select an intervention first'
+            }
+            readOnly
+            style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+          />
         </FormGroup>
       </FormGrid>
 

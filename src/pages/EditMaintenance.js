@@ -4,8 +4,7 @@ import { FaSave, FaTimes } from 'react-icons/fa';
 import Menu from './Menu';
 import styled from 'styled-components';
 import { getMaintenanceById, updateMaintenance } from '../services/maintenance';
-import { getAllEquipments } from '../services/equipment';
-import { fetchEmployers } from '../services/employer';
+import { fetchInterventions } from '../services/intervention';
 
 const Container = styled.div`
   display: flex;
@@ -24,30 +23,22 @@ const EditMaintenance = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [maintenance, setMaintenance] = useState({
-    equipment_id: '',
+    intervention_id: '',
     maintenance_type: 'Preventive',
     scheduled_date: '',
-    performed_date: '',
-    next_maintenance_date: '',
     observations: '',
     technician_id: ''
   });
-  const [equipments, setEquipments] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
+  const [interventions, setInterventions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch equipment options
-        const equipmentsData = await getAllEquipments();
-        console.log('Equipment data in EditMaintenance:', equipmentsData); // Debug log
-        setEquipments(Array.isArray(equipmentsData) ? equipmentsData : []);
-
-        // Fetch technician options (using employers as technicians)
-        const techniciansResponse = await fetchEmployers();
-        console.log('Technicians data in EditMaintenance:', techniciansResponse); // Debug log
-        setTechnicians(Array.isArray(techniciansResponse) ? techniciansResponse : []);
+        // Fetch intervention options
+        const interventionsData = await fetchInterventions();
+        console.log('Interventions data in EditMaintenance:', interventionsData); // Debug log
+        setInterventions(Array.isArray(interventionsData) ? interventionsData : []);
 
         if (id !== '0') {
           // Fetch maintenance data
@@ -57,11 +48,9 @@ const EditMaintenance = () => {
         } else {
           // Example maintenance for demo purposes
           setMaintenance({
-            equipment_id: '1',
+            intervention_id: '1',
             maintenance_type: 'Preventive',
             scheduled_date: '2025-05-10',
-            performed_date: '2025-05-12',
-            next_maintenance_date: '2025-06-10',
             observations: 'No specific observations',
             technician_id: '1'
           });
@@ -79,10 +68,22 @@ const EditMaintenance = () => {
   }, [id, navigate]);
 
   const handleChange = (e) => {
-    setMaintenance({
-      ...maintenance,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+
+    if (name === 'intervention_id') {
+      // When intervention is selected, automatically set the technician_id
+      const selectedIntervention = interventions.find(intervention => intervention.id === parseInt(value));
+      setMaintenance({
+        ...maintenance,
+        [name]: value,
+        technician_id: selectedIntervention?.technician_id || ''
+      });
+    } else {
+      setMaintenance({
+        ...maintenance,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -112,18 +113,18 @@ const EditMaintenance = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Equipment:</label>
+            <label>Intervention:</label>
             <select
-              name="equipment_id"
-              value={maintenance.equipment_id}
+              name="intervention_id"
+              value={maintenance.intervention_id}
               onChange={handleChange}
               disabled={id === '0'}
               required
             >
-              <option value="">Select equipment</option>
-              {equipments.map((equipment) => (
-                <option key={equipment.id} value={equipment.id}>
-                  {equipment.name}
+              <option value="">Select intervention</option>
+              {interventions.map((intervention) => (
+                <option key={intervention.id} value={intervention.id}>
+                  {intervention.equipment?.name || 'Unknown Equipment'} - {intervention.technician_name} ({new Date(intervention.date).toLocaleDateString()})
                 </option>
               ))}
             </select>
@@ -157,27 +158,7 @@ const EditMaintenance = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label>Performed Date:</label>
-            <input
-              type="date"
-              name="performed_date"
-              value={maintenance.performed_date || ''}
-              onChange={handleChange}
-              disabled={id === '0'}
-            />
-          </div>
 
-          <div className="form-group">
-            <label>Next Maintenance Date:</label>
-            <input
-              type="date"
-              name="next_maintenance_date"
-              value={maintenance.next_maintenance_date || ''}
-              onChange={handleChange}
-              disabled={id === '0'}
-            />
-          </div>
 
           <div className="form-group">
             <label>Observations:</label>
@@ -191,20 +172,16 @@ const EditMaintenance = () => {
 
           <div className="form-group">
             <label>Technician:</label>
-            <select
-              name="technician_id"
-              value={maintenance.technician_id}
-              onChange={handleChange}
-              disabled={id === '0'}
-              required
-            >
-              <option value="">Select technician</option>
-              {technicians.map((technician) => (
-                <option key={technician.id} value={technician.id}>
-                  {technician.full_name}
-                </option>
-              ))}
-            </select>
+            <input
+              name="technician_display"
+              value={
+                maintenance.intervention_id
+                  ? interventions.find(i => i.id === parseInt(maintenance.intervention_id))?.technician_name || 'Unknown Technician'
+                  : 'Select an intervention first'
+              }
+              readOnly
+              style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+            />
           </div>
 
           <div className="button-group">

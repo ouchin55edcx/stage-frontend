@@ -23,7 +23,7 @@ api.interceptors.request.use(
 
 /**
  * Get all maintenances with optional filtering
- * @param {Object} filters - Optional filters (month, year, equipment_id, scheduled_date)
+ * @param {Object} filters - Optional filters (month, year, intervention_id, scheduled_date)
  * @returns {Promise<Array>} Array of maintenance objects
  */
 export const getAllMaintenances = async (filters = {}) => {
@@ -103,8 +103,68 @@ export const getMaintenanceById = async (id) => {
  */
 export const createMaintenance = async (maintenanceData) => {
   try {
-    console.log('Creating maintenance with data:', maintenanceData); // Debug log
-    const response = await api.post('/maintenances', maintenanceData);
+    console.log('Creating maintenance with input data:', maintenanceData); // Debug log
+
+    // Validate required fields
+    if (!maintenanceData.intervention_id) {
+      throw new Error('Intervention is required');
+    }
+
+    if (!maintenanceData.maintenance_type) {
+      throw new Error('Maintenance type is required');
+    }
+
+    if (!maintenanceData.scheduled_date) {
+      throw new Error('Scheduled date is required');
+    }
+
+    // First, we need to get the equipment_id from the selected intervention
+    let equipmentId = null;
+
+    try {
+      // Fetch the intervention to get its equipment_id
+      const interventionResponse = await api.get(`/interventions/${maintenanceData.intervention_id}`);
+      console.log('Intervention response:', interventionResponse); // Debug log
+
+      // Try different possible field names for equipment_id
+      equipmentId = interventionResponse.data?.equipment_id ||
+                   interventionResponse.data?.data?.equipment_id ||
+                   interventionResponse.data?.equipement_id ||
+                   interventionResponse.data?.data?.equipement_id;
+
+      console.log('Retrieved equipment_id from intervention:', equipmentId);
+    } catch (error) {
+      console.error('Error fetching intervention:', error);
+      if (error.response && error.response.status === 404) {
+        throw new Error('Selected intervention not found');
+      }
+      throw new Error('Failed to retrieve intervention details');
+    }
+
+    if (!equipmentId) {
+      throw new Error('Equipment ID could not be determined from the selected intervention');
+    }
+
+    // Validate equipment ID
+    if (isNaN(parseInt(equipmentId))) {
+      throw new Error('Invalid equipment ID from intervention');
+    }
+
+    // Map the form data to match the backend validation expectations (English field names)
+    // The backend will handle mapping these to the French database column names
+    const formattedData = {
+      intervention_id: parseInt(maintenanceData.intervention_id),
+      equipment_id: parseInt(equipmentId), // Equipment ID derived from intervention
+      maintenance_type: maintenanceData.maintenance_type,
+      scheduled_date: maintenanceData.scheduled_date,
+      performed_date: maintenanceData.performed_date || null,
+      next_maintenance_date: maintenanceData.next_maintenance_date || null,
+      observations: maintenanceData.observations || '',
+      technician_id: maintenanceData.technician_id ? parseInt(maintenanceData.technician_id) : null
+    };
+
+    console.log('Creating maintenance with formatted data:', formattedData); // Debug log
+    const response = await api.post('/maintenances', formattedData);
     console.log('Create maintenance response:', response); // Debug log
 
     // Check if response.data has a data property
@@ -116,9 +176,23 @@ export const createMaintenance = async (maintenanceData) => {
   } catch (error) {
     console.error('Error in createMaintenance:', error);
 
-    // Propagate the error
-    console.error('Failed to create maintenance');
-    throw error;
+    // Propagate the error with more details
+    if (error.response && error.response.data) {
+      // Handle Laravel validation errors
+      if (error.response.data.errors) {
+        const validationErrors = Object.values(error.response.data.errors).flat();
+        throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+
+      // Handle other server errors
+      const errorMessage = error.response.data.message ||
+                          error.response.data.error ||
+                          'Server validation failed';
+      throw new Error(errorMessage);
+    }
+
+    // Handle network or other errors
+    throw new Error(error.message || 'Failed to create maintenance');
   }
 };
 
@@ -185,19 +259,19 @@ export const getMaintenancesByDate = async (date) => {
 };
 
 /**
- * Get maintenances by equipment ID
- * @param {number} equipmentId - The equipment ID
- * @returns {Promise<Array>} Array of maintenance objects for the specified equipment
+ * Get maintenances by intervention ID
+ * @param {number} interventionId - The intervention ID
+ * @returns {Promise<Array>} Array of maintenance objects for the specified intervention
  */
-export const getMaintenancesByEquipment = async (equipmentId) => {
+export const getMaintenancesByIntervention = async (interventionId) => {
   try {
-    console.log('Fetching maintenances for equipment ID:', equipmentId); // Debug log
+    console.log('Fetching maintenances for intervention ID:', interventionId); // Debug log
 
-    // Use the more general getAllMaintenances function with an equipment_id filter
+    // Use the more general getAllMaintenances function with an intervention_id filter
     // This ensures consistent behavior between the two functions
-    return await getAllMaintenances({ equipment_id: equipmentId });
+    return await getAllMaintenances({ intervention_id: interventionId });
   } catch (error) {
-    console.error('Error in getMaintenancesByEquipment:', error);
+    console.error('Error in getMaintenancesByIntervention:', error);
 
     // Propagate the error
     if (error.response) {

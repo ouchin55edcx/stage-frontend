@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Menu from './Menu';
 import { createMaintenance } from '../services/maintenance';
-import { getAllEquipments } from '../services/equipment';
-import { fetchEmployers } from '../services/employer';
+import { fetchInterventions } from '../services/intervention';
 
 const Container = styled.div`
   display: flex;
@@ -111,7 +110,7 @@ const Button = styled.button`
 const AddMaintenancePage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    equipment_id: '',
+    intervention_id: '',
     maintenance_type: '',
     scheduled_date: '',
     performed_date: '',
@@ -119,23 +118,17 @@ const AddMaintenancePage = () => {
     observations: '',
     technician_id: '',
   });
-  const [equipments, setEquipments] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
+  const [interventions, setInterventions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch equipment options
-        const equipmentsData = await getAllEquipments();
-        console.log('Equipment data in AddMaintenancePage:', equipmentsData); // Debug log
-        setEquipments(Array.isArray(equipmentsData) ? equipmentsData : []);
-
-        // Fetch technician options (using employers as technicians)
-        const techniciansResponse = await fetchEmployers();
-        console.log('Technicians data in AddMaintenancePage:', techniciansResponse); // Debug log
-        setTechnicians(Array.isArray(techniciansResponse) ? techniciansResponse : []);
+        // Fetch intervention options
+        const interventionsData = await fetchInterventions();
+        console.log('Interventions data in AddMaintenancePage:', interventionsData); // Debug log
+        setInterventions(Array.isArray(interventionsData) ? interventionsData : []);
       } catch (error) {
         console.error('Error loading data:', error);
         setError('Failed to load form data. Please try again later.');
@@ -147,10 +140,21 @@ const AddMaintenancePage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+
+    if (name === 'intervention_id') {
+      // When intervention is selected, automatically set the technician_id
+      const selectedIntervention = interventions.find(intervention => intervention.id === parseInt(value));
+      setFormData({
+        ...formData,
+        [name]: value,
+        technician_id: selectedIntervention?.technician_id || ''
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -185,17 +189,17 @@ const AddMaintenancePage = () => {
         <FormContainer>
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label>Equipment:</Label>
+              <Label>Intervention:</Label>
               <Select
-                name="equipment_id"
-                value={formData.equipment_id}
+                name="intervention_id"
+                value={formData.intervention_id}
                 onChange={handleChange}
                 required
               >
-                <option value="">Select equipment</option>
-                {equipments.map((equipment) => (
-                  <option key={equipment.id} value={equipment.id}>
-                    {equipment.name}
+                <option value="">Select intervention</option>
+                {interventions.map((intervention) => (
+                  <option key={intervention.id} value={intervention.id}>
+                    Technician: {intervention.technician_name || intervention.nom_inter || 'Unknown'} | Equipment: {intervention.equipment?.name || 'Unknown'} | Date: {new Date(intervention.date || intervention.date_intervention).toLocaleDateString()}
                   </option>
                 ))}
               </Select>
@@ -229,16 +233,6 @@ const AddMaintenancePage = () => {
             </FormGroup>
 
             <FormGroup>
-              <Label>Performed Date (if already done):</Label>
-              <Input
-                type="date"
-                name="performed_date"
-                value={formData.performed_date}
-                onChange={handleChange}
-              />
-            </FormGroup>
-
-            <FormGroup>
               <Label>Next Maintenance Date:</Label>
               <Input
                 type="date"
@@ -259,19 +253,18 @@ const AddMaintenancePage = () => {
 
             <FormGroup>
               <Label>Technician:</Label>
-              <Select
-                name="technician_id"
-                value={formData.technician_id}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select technician</option>
-                {technicians.map((technician) => (
-                  <option key={technician.id} value={technician.id}>
-                    {technician.full_name}
-                  </option>
-                ))}
-              </Select>
+              <Input
+                name="technician_display"
+                value={
+                  formData.intervention_id
+                    ? interventions.find(i => i.id === parseInt(formData.intervention_id))?.technician_name ||
+                      interventions.find(i => i.id === parseInt(formData.intervention_id))?.nom_inter ||
+                      'Unknown Technician'
+                    : 'Select an intervention first'
+                }
+                readOnly
+                style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+              />
             </FormGroup>
 
             <ButtonGroup>
