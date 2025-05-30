@@ -135,7 +135,7 @@ function AddEquipement() {
     ip_address: '',
     processor: '',
     office_version: '',
-    backup_enabled: false,
+    backup_enabled: true,
     employer_id: ''
   });
 
@@ -360,17 +360,6 @@ function AddEquipement() {
                 value={formData.office_version}
                 onChange={handleChange}
                 placeholder="ex: Office 365"
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="backup_enabled">Sauvegarde activée :</Label>
-              <input
-                id="backup_enabled"
-                type="checkbox"
-                name="backup_enabled"
-                checked={formData.backup_enabled}
-                onChange={handleChange}
               />
             </FormGroup>
 

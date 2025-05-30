@@ -377,6 +377,9 @@ function Equipements() {
                     placeholder="ex: Office 365"
                   />
                 </FormGroup>
+
+                {/* Sauvegarde activée checkbox hidden for new equipment */}
+                {/*
                 <FormGroup>
                   <Checkbox>
                     <input
@@ -389,6 +392,7 @@ function Equipements() {
                     <Label htmlFor="backup_enabled" style={{ marginBottom: 0 }}>Sauvegarde activée</Label>
                   </Checkbox>
                 </FormGroup>
+                */}
 
                 {/* Sélection de l'utilisateur */}
                 <FormGroup>
