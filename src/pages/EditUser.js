@@ -92,7 +92,6 @@ function EditUser() {
     email: '',
     poste: '',
     tele: '',
-    role: '',
     service_id: ''
   });
 
@@ -121,7 +120,6 @@ function EditUser() {
           email: userData.email,
           poste: userData.poste,
           tele: userData.phone,
-          role: userData.role || 'employe',
           service_id: userData.service_id
         });
 
@@ -158,6 +156,7 @@ function EditUser() {
       email: user.email,
       poste: user.poste,
       phone: user.tele,
+      role: 'employer', // Default role set to employer
       service_id: Number(user.service_id),
     };
     try {
@@ -192,26 +191,7 @@ function EditUser() {
               <Label>Téléphone</Label>
               <Input type="tel" name="tele" value={user.tele} onChange={handleChange} required />
             </FormGroup>
-            <FormGroup>
-              <Label>Rôle</Label>
-              <select
-                name="role"
-                value={user.role}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  background: '#FFFFFF', /* Fond blanc pour le champ de sélection */
-                  color: '#333333', /* Texte gris foncé */
-                  border: '1px solid #CCCCCC', /* Bordure gris clair */
-                  borderRadius: '8px',
-                }}
-              >
-                <option value="admin">Admin</option>
-                <option value="employe">Employé</option>
-              </select>
-            </FormGroup>
+
             <FormGroup>
               <Label>Service</Label>
               <select
