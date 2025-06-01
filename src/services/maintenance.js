@@ -159,8 +159,8 @@ export const createMaintenance = async (maintenanceData) => {
       scheduled_date: maintenanceData.scheduled_date,
       performed_date: maintenanceData.performed_date || null,
       next_maintenance_date: maintenanceData.next_maintenance_date || null,
-      observations: maintenanceData.observations || '',
-      technician_id: maintenanceData.technician_id ? parseInt(maintenanceData.technician_id) : null
+      observations: maintenanceData.observations || ''
+      // Note: technician info comes from the intervention, not as a separate technician_id
     };
 
     console.log('Creating maintenance with formatted data:', formattedData); // Debug log

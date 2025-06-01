@@ -164,13 +164,12 @@ const MaintenanceForm = ({ onSubmitSuccess, onCancel, currentDate }) => {
     const { name, value } = e.target;
 
     if (name === 'intervention_id') {
-      // When intervention is selected, automatically set the technician_id and equipment_id
+      // When intervention is selected, automatically set the equipment_id
       const selectedIntervention = interventions.find(intervention => intervention.id === parseInt(value));
       console.log('Selected intervention:', selectedIntervention); // Debug log
       setFormData(prev => ({
         ...prev,
         [name]: value,
-        technician_id: selectedIntervention?.technician_id || selectedIntervention?.intervenant_id || '',
         equipment_id: selectedIntervention?.equipment_id || selectedIntervention?.equipement_id || ''
       }));
     } else {

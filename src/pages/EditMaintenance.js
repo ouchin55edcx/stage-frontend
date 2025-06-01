@@ -71,12 +71,10 @@ const EditMaintenance = () => {
     const { name, value } = e.target;
 
     if (name === 'intervention_id') {
-      // When intervention is selected, automatically set the technician_id
-      const selectedIntervention = interventions.find(intervention => intervention.id === parseInt(value));
+      // When intervention is selected, no need to set technician_id since we use technician_name from intervention
       setMaintenance({
         ...maintenance,
-        [name]: value,
-        technician_id: selectedIntervention?.technician_id || ''
+        [name]: value
       });
     } else {
       setMaintenance({

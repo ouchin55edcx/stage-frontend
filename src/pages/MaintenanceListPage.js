@@ -211,7 +211,7 @@ const MaintenanceListPage = () => {
                       <td style={{ padding: '12px' }}>{maintenance.maintenance_type}</td>
                       <td style={{ padding: '12px' }}>{maintenance.scheduled_date ? new Date(maintenance.scheduled_date).toLocaleDateString() : '-'}</td>
                       <td style={{ padding: '12px' }}>{maintenance.observations || '-'}</td>
-                      <td style={{ padding: '12px' }}>{maintenance.technician?.full_name || 'Not assigned'}</td>
+                      <td style={{ padding: '12px' }}>{maintenance.intervention?.technician_name || 'Not assigned'}</td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
                         <button
                           onClick={() => handleEdit(maintenance.id)}

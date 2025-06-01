@@ -580,7 +580,6 @@ const MaintenancePage = () => {
     performed_date: '',
     next_maintenance_date: '',
     observations: '',
-    technician_id: '',
   });
 
   // Pagination state
@@ -923,7 +922,6 @@ const MaintenancePage = () => {
         performed_date: '',
         next_maintenance_date: '',
         observations: '',
-        technician_id: '',
       });
 
       // Show success message
@@ -1426,9 +1424,7 @@ const MaintenancePage = () => {
                             <div className="info-row">
                               <span className="label">Technician:</span>
                               <span className="value">
-                                {maintenance.technician?.full_name ||
-                                 (technicians.find(t => t.id === maintenance.technician_id)?.full_name) ||
-                                 'Not assigned'}
+                                {maintenance.intervention?.technician_name || 'Not assigned'}
                               </span>
                             </div>
                             {maintenance.observations && (
