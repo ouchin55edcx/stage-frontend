@@ -146,7 +146,7 @@ const MaintenanceListPage = () => {
       <MainContent>
         <PageHeader>
           <Title>Maintenance Records</Title>
-          <AddButton to="/admin/add-maintenance">
+          <AddButton to="/admin/maintenance">
             <FaPlus /> Add Maintenance
           </AddButton>
         </PageHeader>
