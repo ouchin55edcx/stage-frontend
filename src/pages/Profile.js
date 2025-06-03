@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MenuEmploye from '../pages/MenuEmploye';
 import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faLock, faCheckCircle, faTimesCircle, faUser, faIdCard, faPhone, faVial } from '@fortawesome/free-solid-svg-icons';
+import { faEnvelope, faLock, faCheckCircle, faTimesCircle, faUser, faIdCard, faPhone, faVial, faBuilding, faUserTag, faCog } from '@fortawesome/free-solid-svg-icons';
 import { getUserInfo, updateProfile, testApiConnection, testProfileEndpoint } from '../services/api';
 
 const Container = styled.div`
@@ -124,13 +124,72 @@ const AlertMessage = styled.div`
   }
 `;
 
+const InfoDisplay = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const InfoItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #2196f3;
+`;
+
+const InfoLabel = styled.span`
+  font-weight: 600;
+  color: #555;
+  min-width: 120px;
+`;
+
+const InfoValue = styled.span`
+  color: #333;
+  flex: 1;
+`;
+
+const StatusBadge = styled.span`
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  &.active {
+    background: #e8f5e8;
+    color: #2e7d32;
+  }
+
+  &.inactive {
+    background: #ffebee;
+    color: #c62828;
+  }
+`;
+
+const RoleBadge = styled.span`
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #e3f2fd;
+  color: #1565c0;
+`;
+
 export default function Profile() {
   const [userData, setUserData] = useState({
+    id: '',
     email: '',
     full_name: '',
     role: '',
-    poste: '',
-    phone: ''
+    profile: {
+      poste: '',
+      phone: '',
+      service_id: '',
+      service_name: '',
+      is_active: true
+    }
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -156,11 +215,17 @@ export default function Profile() {
         const response = await getUserInfo();
         if (response && response.user) {
           setUserData({
-            email: response.user.email,
-            full_name: response.user.full_name,
-            role: response.user.role,
-            poste: response.user.poste || '',
-            phone: response.user.phone || ''
+            id: response.user.id || '',
+            email: response.user.email || '',
+            full_name: response.user.full_name || '',
+            role: response.user.role || '',
+            profile: {
+              poste: response.user.profile?.poste || '',
+              phone: response.user.profile?.phone || '',
+              service_id: response.user.profile?.service_id || '',
+              service_name: response.user.profile?.service_name || '',
+              is_active: response.user.profile?.is_active !== undefined ? response.user.profile.is_active : true
+            }
           });
         }
       } catch (error) {
@@ -190,8 +255,8 @@ export default function Profile() {
 
       // Add employer-specific fields if user is an employer
       if (userData.role.toLowerCase() === 'employer') {
-        profileData.poste = userData.poste;
-        profileData.phone = userData.phone;
+        profileData.poste = userData.profile.poste;
+        profileData.phone = userData.profile.phone;
       }
 
       console.log('Sending profile data:', profileData);
@@ -279,8 +344,11 @@ export default function Profile() {
                       <StyledInput
                         type="text"
                         placeholder="Votre poste"
-                        value={userData.poste || ''}
-                        onChange={(e) => setUserData({...userData, poste: e.target.value})}
+                        value={userData.profile.poste || ''}
+                        onChange={(e) => setUserData({
+                          ...userData,
+                          profile: {...userData.profile, poste: e.target.value}
+                        })}
                       />
                     </InputGroup>
 
@@ -292,8 +360,11 @@ export default function Profile() {
                       <StyledInput
                         type="text"
                         placeholder="Votre numéro de téléphone"
-                        value={userData.phone || ''}
-                        onChange={(e) => setUserData({...userData, phone: e.target.value})}
+                        value={userData.profile.phone || ''}
+                        onChange={(e) => setUserData({
+                          ...userData,
+                          profile: {...userData.profile, phone: e.target.value}
+                        })}
                       />
                     </InputGroup>
                   </>

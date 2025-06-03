@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import Menu from './Menu';
 import { fetchDeclarations, deleteDeclaration, updateDeclaration } from '../services/declaration';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrash, faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faTrash, faCheck, faTimes, faSpinner, faUser, faBuilding, faIdCard, faPhone, faEnvelope, faCalendarAlt } from '@fortawesome/free-solid-svg-icons';
 import { useNotifications } from '../contexts/NotificationContext';
 
 const Container = styled.div`
@@ -159,6 +159,55 @@ const EmptyState = styled.div`
   color: #666;
 `;
 
+const EmployerInfo = styled.div`
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid #2196f3;
+`;
+
+const EmployerHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+  color: #2196f3;
+`;
+
+const EmployerDetails = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+`;
+
+const EmployerDetail = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
+`;
+
+const DetailIcon = styled(FontAwesomeIcon)`
+  color: #2196f3;
+  width: 16px;
+`;
+
+const DeclarationInfo = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+`;
+
 function Notifications() {
   const { showError } = useNotifications();
   const [declarations, setDeclarations] = useState([]);
@@ -262,10 +311,65 @@ function Notifications() {
                   {getStatusLabel(declaration.status || 'new')}
                 </StatusBadge>
               </CardHeader>
-              <CardMeta>
-                <span>Par: {declaration.employer?.full_name || 'Employé'}</span>
-                <span>Le: {formatDate(declaration.created_at)}</span>
-              </CardMeta>
+
+              {/* Declaration Information */}
+              <DeclarationInfo>
+                <InfoRow>
+                  <DetailIcon icon={faCalendarAlt} />
+                  <span>Déclaré le: {formatDate(declaration.created_at)}</span>
+                </InfoRow>
+                {declaration.updated_at && declaration.updated_at !== declaration.created_at && (
+                  <InfoRow>
+                    <DetailIcon icon={faCalendarAlt} />
+                    <span>Mis à jour le: {formatDate(declaration.updated_at)}</span>
+                  </InfoRow>
+                )}
+              </DeclarationInfo>
+
+              {/* Employer Information */}
+              {declaration.employer && (
+                <EmployerInfo>
+                  <EmployerHeader>
+                    <FontAwesomeIcon icon={faUser} />
+                    Informations de l'employé
+                  </EmployerHeader>
+                  <EmployerDetails>
+                    <EmployerDetail>
+                      <DetailIcon icon={faUser} />
+                      <span>{declaration.employer.full_name}</span>
+                    </EmployerDetail>
+
+                    {declaration.employer.email && (
+                      <EmployerDetail>
+                        <DetailIcon icon={faEnvelope} />
+                        <span>{declaration.employer.email}</span>
+                      </EmployerDetail>
+                    )}
+
+                    {declaration.employer.poste && (
+                      <EmployerDetail>
+                        <DetailIcon icon={faIdCard} />
+                        <span>{declaration.employer.poste}</span>
+                      </EmployerDetail>
+                    )}
+
+                    {declaration.employer.phone && (
+                      <EmployerDetail>
+                        <DetailIcon icon={faPhone} />
+                        <span>{declaration.employer.phone}</span>
+                      </EmployerDetail>
+                    )}
+
+                    {(declaration.employer.service || declaration.employer.service_name) && (
+                      <EmployerDetail>
+                        <DetailIcon icon={faBuilding} />
+                        <span>{declaration.employer.service || declaration.employer.service_name}</span>
+                      </EmployerDetail>
+                    )}
+                  </EmployerDetails>
+                </EmployerInfo>
+              )}
+
               <CardDescription>{declaration.description}</CardDescription>
               <CardActions>
                 <ResolveButton
