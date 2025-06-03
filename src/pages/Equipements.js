@@ -4,6 +4,7 @@ import Menu from './Menu';
 import { getAllEquipments, createEquipment } from '../services/equipment';
 import { fetchEmployers } from '../services/employer';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../contexts/NotificationContext';
 
 // Définition du CSS dans un composant styled-components
 const Container = styled.div`
@@ -115,6 +116,7 @@ const Checkbox = styled.div`
 
 function Equipements() {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotifications();
   const [equipements, setEquipements] = useState([]);
   const [employers, setEmployers] = useState([]);
   const [formData, setFormData] = useState({
@@ -219,13 +221,13 @@ function Equipements() {
       await createEquipment(formData);
 
       // Success message
-      alert("Équipement ajouté avec succès !");
+      showSuccess("Équipement ajouté avec succès !");
 
       // Redirect to equipment list page
       navigate('/admin/equipements/list');
     } catch (error) {
       console.error('Erreur lors de l\'ajout de l\'équipement:', error);
-      alert(`Erreur: ${error.message || 'Une erreur est survenue lors de l\'ajout de l\'équipement'}`);
+      showError(`Erreur: ${error.message || 'Une erreur est survenue lors de l\'ajout de l\'équipement'}`);
     } finally {
       setIsSubmitting(false);
     }

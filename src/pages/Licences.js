@@ -6,6 +6,7 @@ import Menu from './Menu';
 import Modal from '../components/Modal';
 import { createLicense, fetchLicenses, getLicenseById, updateLicense, deleteLicense } from '../services/license';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../contexts/NotificationContext';
 
 // Styled components
 const Container = styled.div`
@@ -157,6 +158,7 @@ const ErrorMessage = styled.div`
 
 const Licences = () => {
   const navigate = useNavigate();
+  const { showSuccess, showError, showConfirmation } = useNotifications();
 
   // State for licenses list
   const [licenses, setLicenses] = useState([]);
@@ -232,10 +234,11 @@ const Licences = () => {
       const data = await fetchLicenses();
       setLicenses(data);
 
-      alert('Licence ajoutée avec succès !');
+      showSuccess('Licence ajoutée avec succès !');
     } catch (err) {
       console.error(err);
       setError(err.message || "Erreur lors de l'ajout de la licence");
+      showError(err.message || "Erreur lors de l'ajout de la licence");
     } finally {
       setLoading(false);
     }
@@ -256,10 +259,11 @@ const Licences = () => {
       const data = await fetchLicenses();
       setLicenses(data);
 
-      alert('Licence modifiée avec succès !');
+      showSuccess('Licence modifiée avec succès !');
     } catch (err) {
       console.error('Error updating license:', err);
       setEditError('Erreur lors de la mise à jour: ' + err.message);
+      showError('Erreur lors de la mise à jour: ' + err.message);
     } finally {
       setEditLoading(false);
     }
@@ -274,7 +278,7 @@ const Licences = () => {
       setShowEditModal(true);
     } catch (err) {
       console.error('Error fetching license:', err);
-      alert('Erreur lors du chargement de la licence: ' + err.message);
+      showError('Erreur lors du chargement de la licence: ' + err.message);
     } finally {
       setEditLoading(false);
     }
@@ -282,14 +286,19 @@ const Licences = () => {
 
   // Handle license deletion
   const handleDelete = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette licence ?')) {
+    const confirmed = await showConfirmation(
+      'Supprimer la licence',
+      'Êtes-vous sûr de vouloir supprimer cette licence ? Cette action est irréversible.'
+    );
+
+    if (confirmed) {
       try {
         await deleteLicense(id);
         setLicenses(licenses.filter(license => license.id !== id));
-        alert('Licence supprimée avec succès !');
+        showSuccess('Licence supprimée avec succès !');
       } catch (err) {
         console.error('Error deleting license:', err);
-        alert('Erreur lors de la suppression: ' + err.message);
+        showError('Erreur lors de la suppression: ' + err.message);
       }
     }
   };

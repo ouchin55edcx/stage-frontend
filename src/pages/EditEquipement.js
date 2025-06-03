@@ -239,7 +239,13 @@ function EditEquipement() {
     setIsSubmitting(true);
 
     try {
-      await updateEquipment(id, formData);
+      // Ensure backup_enabled is always false
+      const equipmentData = {
+        ...formData,
+        backup_enabled: false
+      };
+
+      await updateEquipment(id, equipmentData);
       alert('Équipement modifié avec succès !');
       navigate('/admin/equipements/list');
     } catch (error) {
@@ -389,18 +395,7 @@ function EditEquipement() {
                     />
                   </FormGroup>
 
-                  <FormGroup>
-                    <Checkbox>
-                      <input
-                        type="checkbox"
-                        id="backup_enabled"
-                        name="backup_enabled"
-                        checked={formData.backup_enabled || false}
-                        onChange={handleChange}
-                      />
-                      <Label htmlFor="backup_enabled" style={{ marginBottom: 0 }}>Sauvegarde activée</Label>
-                    </Checkbox>
-                  </FormGroup>
+
 
                   <FormGroup>
                     <Label htmlFor="employer_id">Utilisateur</Label>

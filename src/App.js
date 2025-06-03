@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
@@ -15,7 +16,7 @@ import Licences from './pages/Licences';
 import UsersList from './pages/UsersList';
 import EquipementsList from './pages/EquipementsList';
 import InterventionsList from './pages/InterventionsList';
-import ServicesList from './pages/ServicesList';
+
 import LicencesList from './pages/LicencesList';
 import LicenseManagement from './pages/LicenseManagement'; // New combined license management page
 import MaintenancePage from './pages/MaintenancePage';
@@ -26,6 +27,7 @@ import Notifications from './pages/Notifications';
 
 import EditUser from './pages/EditUser'; // Page pour modifier un utilisateur
 import EditEquipement from './pages/EditEquipement'; // ✅ Page pour modifier un équipement
+import AddEquipement from './pages/AddEquipement'; // Page pour ajouter un équipement
 import EditIntervention from './pages/EditIntervention';
 import EditService from './pages/EditService';  // Ajustez le chemin si nécessaire
 import EditLicence from './pages/EditLicence'; // Importer la page d'édition
@@ -55,7 +57,8 @@ const Logout = () => {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <NotificationProvider>
+      <BrowserRouter>
       <Routes>
         {/* Public route for login */}
         <Route path="/login" element={<Login />} />
@@ -77,9 +80,10 @@ export default function App() {
           <Route path="/admin/interventions" element={<Interventions />} />
           <Route path="/admin/interventions/list" element={<InterventionsList />} />
           <Route path="/admin/services" element={<Services />} />
-          <Route path="/admin/services/list" element={<ServicesList />} />
+
           <Route path="/admin/equipements" element={<Equipements />} />
           <Route path="/admin/equipements/list" element={<EquipementsList />} />
+          <Route path="/equipements/add" element={<AddEquipement />} />
           <Route path="/equipements/edit/:id" element={<EditEquipement />} />
           <Route path="/admin/licences" element={<Licences />} />
           <Route path="/admin/licences/list" element={<LicencesList />} />
@@ -103,6 +107,7 @@ export default function App() {
         {/* Redirect all other routes to login */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </NotificationProvider>
   );
 }

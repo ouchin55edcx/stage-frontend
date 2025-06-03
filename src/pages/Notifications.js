@@ -4,6 +4,7 @@ import Menu from './Menu';
 import { fetchDeclarations, deleteDeclaration, updateDeclaration } from '../services/declaration';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrash, faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const Container = styled.div`
   display: flex;
@@ -159,6 +160,7 @@ const EmptyState = styled.div`
 `;
 
 function Notifications() {
+  const { showError } = useNotifications();
   const [declarations, setDeclarations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -206,7 +208,7 @@ function Notifications() {
       ));
     } catch (err) {
       console.error(`Error updating declaration status to ${status}:`, err);
-      alert(`Erreur lors de la mise à jour du statut de la déclaration.`);
+      showError(`Erreur lors de la mise à jour du statut de la déclaration.`);
     } finally {
       setActionLoading(null);
     }

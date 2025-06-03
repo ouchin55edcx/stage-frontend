@@ -925,7 +925,7 @@ const MaintenancePage = () => {
       });
 
       // Show success message
-      showNotification('Maintenance added successfully!', 'success');
+      showNotification('Maintenance ajoutée avec succès !', 'success');
 
       // Refresh maintenances list for current date
       const currentDate = formatDate(date);
@@ -938,7 +938,7 @@ const MaintenancePage = () => {
       fetchAllMaintenances();
     } catch (error) {
       console.error('Error adding maintenance:', error);
-      showNotification(`Error: ${error.message || 'An error occurred'}`, 'error');
+      showNotification(`Erreur : ${error.message || 'Une erreur s\'est produite'}`, 'error');
     }
   };
 
@@ -988,8 +988,8 @@ const MaintenancePage = () => {
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
 
     const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
     ];
 
     // Create days for the calendar
@@ -1034,7 +1034,7 @@ const MaintenancePage = () => {
             ${hasMaintenance ? 'has-maintenance' : ''}
           `}
           onClick={() => handleDateClick(new Date(currentYear, currentMonth, day))}
-          title={hasMaintenance ? 'Has scheduled maintenance' : 'No scheduled maintenance'}
+          title={hasMaintenance ? 'Maintenance programmée' : 'Aucune maintenance programmée'}
         >
           {day}
           {hasMaintenance && <span className="maintenance-indicator"></span>}
@@ -1109,7 +1109,7 @@ const MaintenancePage = () => {
           <CalendarTitle>
             {monthNames[currentMonth]} {currentYear}
             {isFiltering && (
-              <span className="calendar-filter-indicator" title="Calendar filtering is active">
+              <span className="calendar-filter-indicator" title="Le filtrage du calendrier est actif">
                 <FontAwesomeIcon icon={faFilter} style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }} />
               </span>
             )}
@@ -1172,13 +1172,13 @@ const MaintenancePage = () => {
           </CalendarNavButton>
         </CalendarHeader>
         <CalendarWeekdays>
-          <WeekdayLabel>Sun</WeekdayLabel>
-          <WeekdayLabel>Mon</WeekdayLabel>
-          <WeekdayLabel>Tue</WeekdayLabel>
-          <WeekdayLabel>Wed</WeekdayLabel>
-          <WeekdayLabel>Thu</WeekdayLabel>
-          <WeekdayLabel>Fri</WeekdayLabel>
-          <WeekdayLabel>Sat</WeekdayLabel>
+          <WeekdayLabel>Dim</WeekdayLabel>
+          <WeekdayLabel>Lun</WeekdayLabel>
+          <WeekdayLabel>Mar</WeekdayLabel>
+          <WeekdayLabel>Mer</WeekdayLabel>
+          <WeekdayLabel>Jeu</WeekdayLabel>
+          <WeekdayLabel>Ven</WeekdayLabel>
+          <WeekdayLabel>Sam</WeekdayLabel>
         </CalendarWeekdays>
         <CalendarDays>
           {days}
@@ -1189,15 +1189,15 @@ const MaintenancePage = () => {
 
   const renderMaintenanceStatus = (maintenance) => {
     if (!maintenance) {
-      return <span className="status scheduled">Unknown</span>;
+      return <span className="status scheduled">Inconnu</span>;
     }
 
     if (maintenance.performed_date) {
-      return <span className="status completed">Completed</span>;
+      return <span className="status completed">Terminée</span>;
     } else if (maintenance.scheduled_date && new Date(maintenance.scheduled_date) < new Date()) {
-      return <span className="status overdue">Overdue</span>;
+      return <span className="status overdue">En retard</span>;
     } else {
-      return <span className="status scheduled">Scheduled</span>;
+      return <span className="status scheduled">Programmée</span>;
     }
   };
 
@@ -1206,13 +1206,13 @@ const MaintenancePage = () => {
       <Menu />
       <main className="main-content">
         <div className="page-header">
-          <h1>Maintenance Management</h1>
+          <h1>Gestion de la Maintenance</h1>
           <div className="header-actions">
             <div className="filter-container">
               <div className="filter-group">
                 <label htmlFor="filter-date">
                   <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
-                  Filter by Scheduled Date:
+                  Filtrer par Date Programmée :
                 </label>
                 <input
                   type="date"
@@ -1227,7 +1227,7 @@ const MaintenancePage = () => {
                   disabled={isLoading}
                 >
                   <FontAwesomeIcon icon={faSearch} style={{ marginRight: '0.5rem' }} />
-                  Apply Filter
+                  Appliquer le Filtre
                 </button>
                 <button
                   className="button secondary filter-button"
@@ -1235,13 +1235,13 @@ const MaintenancePage = () => {
                   disabled={isLoading || !isFiltering}
                 >
                   <FontAwesomeIcon icon={faTimes} style={{ marginRight: '0.5rem' }} />
-                  Clear Filter
+                  Effacer le Filtre
                 </button>
               </div>
             </div>
             <button className="button primary" onClick={() => setIsModalOpen(true)}>
               <FontAwesomeIcon icon={faPlus} style={{ marginRight: '0.5rem' }} />
-              Schedule Maintenance
+              Programmer une Maintenance
             </button>
           </div>
         </div>
@@ -1250,7 +1250,7 @@ const MaintenancePage = () => {
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title="Schedule New Maintenance"
+          title="Programmer une Nouvelle Maintenance"
         >
           <MaintenanceForm
             onSubmitSuccess={() => {
@@ -1270,11 +1270,11 @@ const MaintenancePage = () => {
             <div className="card">
               <div className="card-header">
                 <h2>
-                  Maintenance Calendar
+                  Calendrier de Maintenance
                   {isFiltering && filterDate && (
                     <span className="filter-badge" style={{ marginLeft: '0.75rem', fontSize: '0.75rem' }}>
                       <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
-                      Filtering Active
+                      Filtrage Actif
                     </span>
                   )}
                 </h2>
@@ -1328,13 +1328,13 @@ const MaintenancePage = () => {
                         }
                       }
                     }}
-                    title={isFiltering ? "Clear calendar filter" : "Filter by calendar selection"}
+                    title={isFiltering ? "Effacer le filtre du calendrier" : "Filtrer par sélection du calendrier"}
                   >
                     <FontAwesomeIcon
                       icon={isFiltering ? faTimes : faFilter}
                       style={{ marginRight: '0.5rem' }}
                     />
-                    {isFiltering ? 'Clear Filter' : 'Filter by Calendar'}
+                    {isFiltering ? 'Effacer le Filtre' : 'Filtrer par Calendrier'}
                   </button>
                 </div>
               </div>
@@ -1349,16 +1349,16 @@ const MaintenancePage = () => {
               <div className="card-header">
                 <h2>
                   {isFiltering && filterDate
-                    ? `Maintenances Scheduled for ${new Date(filterDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    ? `Maintenances Programmées pour le ${new Date(filterDate).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}`
                     : isFiltering
-                      ? 'All Maintenances'
-                      : `Maintenances for ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                      ? 'Toutes les Maintenances'
+                      : `Maintenances pour le ${date.toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}`
                   }
                 </h2>
                 {isFiltering && (
                   <span className="filter-badge">
                     <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
-                    Filtered
+                    Filtré
                   </span>
                 )}
               </div>
@@ -1366,17 +1366,17 @@ const MaintenancePage = () => {
                 {isLoading ? (
                   <div className="loading-spinner">
                     <div className="spinner"></div>
-                    <p>Loading maintenances...</p>
+                    <p>Chargement des maintenances...</p>
                   </div>
                 ) : maintenances.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-icon">📅</div>
                     {isFiltering && filterDate ? (
-                      <p>No maintenance scheduled for {new Date(filterDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.</p>
+                      <p>Aucune maintenance programmée pour le {new Date(filterDate).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}.</p>
                     ) : isFiltering ? (
-                      <p>No maintenance records found.</p>
+                      <p>Aucun enregistrement de maintenance trouvé.</p>
                     ) : (
-                      <p>No maintenance scheduled for this date.</p>
+                      <p>Aucune maintenance programmée pour cette date.</p>
                     )}
                     {isFiltering && (
                       <button
@@ -1385,7 +1385,7 @@ const MaintenancePage = () => {
                         style={{ marginTop: '1rem' }}
                       >
                         <FontAwesomeIcon icon={faTimes} style={{ marginRight: '0.5rem' }} />
-                        Clear Filter
+                        Effacer le Filtre
                       </button>
                     )}
                   </div>
@@ -1398,10 +1398,10 @@ const MaintenancePage = () => {
                         <div key={maintenance.id || Math.random()} className="maintenance-card">
                           <div className="maintenance-card-header">
                             <h3>
-                              {maintenance.intervention?.equipment?.name || 'Unknown Equipment'}
+                              {maintenance.intervention?.equipment?.name || 'Équipement Inconnu'}
                               {maintenance.intervention && (
                                 <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: '#6b7280' }}>
-                                  {' '}(Intervention: {new Date(maintenance.intervention.date).toLocaleDateString()})
+                                  {' '}(Intervention : {new Date(maintenance.intervention.date).toLocaleDateString('fr-FR')})
                                 </span>
                               )}
                             </h3>
@@ -1409,27 +1409,27 @@ const MaintenancePage = () => {
                           </div>
                           <div className="maintenance-card-body">
                             <div className="info-row">
-                              <span className="label">Type:</span>
-                              <span className="value">{maintenance.maintenance_type || 'Not specified'}</span>
+                              <span className="label">Type :</span>
+                              <span className="value">{maintenance.maintenance_type || 'Non spécifié'}</span>
                             </div>
                             {maintenance.scheduled_date && (
                               <div className="info-row">
-                                <span className="label">Scheduled:</span>
+                                <span className="label">Programmée :</span>
                                 <span className="value">
-                                  {new Date(maintenance.scheduled_date).toLocaleDateString()}
+                                  {new Date(maintenance.scheduled_date).toLocaleDateString('fr-FR')}
                                 </span>
                               </div>
                             )}
 
                             <div className="info-row">
-                              <span className="label">Technician:</span>
+                              <span className="label">Technicien :</span>
                               <span className="value">
-                                {maintenance.intervention?.technician_name || 'Not assigned'}
+                                {maintenance.intervention?.technician_name || 'Non assigné'}
                               </span>
                             </div>
                             {maintenance.observations && (
                               <div className="observations">
-                                <span className="label">Observations:</span>
+                                <span className="label">Observations :</span>
                                 <p>{maintenance.observations}</p>
                               </div>
                             )}

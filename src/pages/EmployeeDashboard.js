@@ -5,8 +5,10 @@ import { useLocation } from 'react-router-dom';
 import MenuEmploye from './MenuEmploye';
 import { fetchMyStatistics } from '../services/statistics';
 import { API_URL } from '../services/api';
+import { useNotifications } from '../contexts/NotificationContext';
 
 export default function EmployeeDashboard() {
+  const { showSuccess } = useNotifications();
   const [equipements, setEquipements] = useState([]);
   const [interventions, setInterventions] = useState([]);
   const [newIssue, setNewIssue] = useState('');
@@ -284,7 +286,7 @@ export default function EmployeeDashboard() {
         setInterventions(interRes.data);
         setNewIssue('');
         setSelectedEquipment('');
-        alert('Panne signalée avec succès.');
+        showSuccess('Panne signalée avec succès.');
       } catch (error) {
         console.error('Erreur de signalement:', error);
       }

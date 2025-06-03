@@ -299,44 +299,6 @@ const Settings = () => {
                 >
                   {updating ? 'Mise à jour en cours...' : 'Sauvegarder les modifications'}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={async () => {
-                    console.log('Test profile endpoint button clicked');
-                    try {
-                      setUpdating(true);
-                      setError('');
-                      setSuccess('');
-
-                      const profileTest = await testProfileEndpoint();
-                      console.log('Profile endpoint test result:', profileTest);
-
-                      if (profileTest.success) {
-                        setSuccess(`Test réussi: ${profileTest.message}. Méthodes autorisées: ${profileTest.allowedMethods || 'Non spécifié'}`);
-                      } else {
-                        setError(`Test échoué: ${profileTest.message}`);
-                      }
-                    } catch (err) {
-                      console.error('Error testing profile endpoint:', err);
-                      setError(`Erreur lors du test: ${err.message}`);
-                    } finally {
-                      setUpdating(false);
-                    }
-                  }}
-                  disabled={updating}
-                  style={{
-                    padding: '0.7rem 1.5rem',
-                    background: updating ? '#90CAF9' : '#4CAF50',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: updating ? 'default' : 'pointer',
-                    marginTop: '1rem',
-                  }}
-                >
-                  Tester l'API
-                </button>
               </div>
             </div>
           </>

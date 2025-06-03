@@ -137,3 +137,76 @@ export const deleteDeclaration = async (id) => {
     }
   }
 };
+
+/**
+ * Update declaration status (admin only)
+ * @param {number} id - The declaration ID
+ * @param {string} status - The new status ('resolved', 'rejected', 'in_progress', 'pending')
+ * @param {string} adminComment - Admin comment for the status change
+ * @returns {Promise<Object>} Updated declaration
+ */
+export const updateDeclarationStatus = async (id, status, adminComment) => {
+  try {
+    const response = await api.put(`/declarations/${id}`, {
+      status,
+      admin_comment: adminComment
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Server responded with an error');
+    } else if (error.request) {
+      throw new Error('No response received from server');
+    } else {
+      throw new Error('Error setting up the request');
+    }
+  }
+};
+
+/**
+ * Approve a declaration (admin only)
+ * @param {number} id - The declaration ID
+ * @param {string} adminComment - Admin comment for approval
+ * @returns {Promise<Object>} Updated declaration
+ */
+export const approveDeclaration = async (id, adminComment = "Issue has been reviewed and resolved") => {
+  try {
+    const response = await api.put(`/declarations/${id}`, {
+      status: "resolved",
+      admin_comment: adminComment
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Server responded with an error');
+    } else if (error.request) {
+      throw new Error('No response received from server');
+    } else {
+      throw new Error('Error setting up the request');
+    }
+  }
+};
+
+/**
+ * Reject a declaration (admin only)
+ * @param {number} id - The declaration ID
+ * @param {string} adminComment - Admin comment for rejection
+ * @returns {Promise<Object>} Updated declaration
+ */
+export const rejectDeclaration = async (id, adminComment = "Insufficient information provided") => {
+  try {
+    const response = await api.put(`/declarations/${id}`, {
+      status: "rejected",
+      admin_comment: adminComment
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Server responded with an error');
+    } else if (error.request) {
+      throw new Error('No response received from server');
+    } else {
+      throw new Error('Error setting up the request');
+    }
+  }
+};

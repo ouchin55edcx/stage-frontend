@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrashAlt, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { getAllEquipments, deleteEquipment } from '../services/equipment';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const Container = styled.div`
   display: flex;
@@ -93,29 +94,82 @@ const ActionButton = styled.button`
   }
 `;
 
-const AddButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0.8rem 1.5rem;
-  margin-bottom: 1.5rem;
-  background: linear-gradient(45deg, #00aaff, #005f99);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+// Loader animations and components
+const spin = keyframes`
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+`;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-  }
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+`;
+
+const LoaderContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  min-height: 300px;
+`;
+
+const LoaderSpinner = styled.div`
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e3f2fd;
+  border-top: 4px solid #007acc;
+  border-radius: 50%;
+  animation: ${spin} 1s linear infinite;
+  margin-bottom: 1.5rem;
+`;
+
+const LoaderText = styled.div`
+  font-size: 1.1rem;
+  color: #007acc;
+  font-weight: 500;
+  animation: ${pulse} 1.5s ease-in-out infinite;
+  text-align: center;
+`;
+
+const LoaderSubtext = styled.div`
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
+  text-align: center;
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  min-height: 300px;
+  text-align: center;
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 3rem;
+  color: #ff3b30;
+  margin-bottom: 1rem;
+`;
+
+const ErrorText = styled.div`
+  font-size: 1.2rem;
+  color: #ff3b30;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+`;
+
+const ErrorSubtext = styled.div`
+  font-size: 0.9rem;
+  color: #666;
 `;
 
 function EquipementList() {
   const navigate = useNavigate();
+  const { showSuccess, showError, showConfirmation } = useNotifications();
   const [equipements, setEquipements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -157,16 +211,21 @@ function EquipementList() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet équipement ?')) {
+    const confirmed = await showConfirmation(
+      'Supprimer l\'équipement',
+      'Êtes-vous sûr de vouloir supprimer cet équipement ? Cette action est irréversible.'
+    );
+
+    if (confirmed) {
       try {
         setIsDeleting(true);
         await deleteEquipment(id);
         // Refresh the list after successful deletion
         await fetchEquipments();
-        alert('Équipement supprimé avec succès');
+        showSuccess('Équipement supprimé avec succès');
       } catch (error) {
         console.error('Error deleting equipment:', error);
-        alert(`Erreur lors de la suppression: ${error.message}`);
+        showError(`Erreur lors de la suppression: ${error.message}`);
       } finally {
         setIsDeleting(false);
       }
@@ -177,9 +236,7 @@ function EquipementList() {
     navigate(`/equipements/edit/${id}`);
   };
 
-  const handleAdd = () => {
-    navigate('/equipements/add');
-  };
+
 
   const getUserInfo = (employer) => {
     return employer ? `${employer.poste} (${employer.phone})` : 'Non attribué';
@@ -211,8 +268,39 @@ function EquipementList() {
     }
   };
 
-  if (loading) return <MainContent><ListContainer><Title>Loading...</Title></ListContainer></MainContent>;
-  if (error) return <MainContent><ListContainer><Title>{error}</Title></ListContainer></MainContent>;
+  if (loading) {
+    return (
+      <Container>
+        <Menu notifications={[]} />
+        <MainContent>
+          <ListContainer>
+            <LoaderContainer>
+              <LoaderSpinner />
+              <LoaderText>Chargement des équipements...</LoaderText>
+              <LoaderSubtext>Veuillez patienter pendant que nous récupérons les données</LoaderSubtext>
+            </LoaderContainer>
+          </ListContainer>
+        </MainContent>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <Menu notifications={[]} />
+        <MainContent>
+          <ListContainer>
+            <ErrorContainer>
+              <ErrorIcon>⚠️</ErrorIcon>
+              <ErrorText>Erreur de chargement</ErrorText>
+              <ErrorSubtext>{error}</ErrorSubtext>
+            </ErrorContainer>
+          </ListContainer>
+        </MainContent>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -221,9 +309,7 @@ function EquipementList() {
         <ListContainer>
           <Title>Liste des équipements</Title>
 
-          <AddButton onClick={handleAdd}>
-            <FontAwesomeIcon icon={faPlus} /> Ajouter un équipement
-          </AddButton>
+
 
           <Table>
             <TableHeader>
@@ -238,7 +324,6 @@ function EquipementList() {
                 <TableHeaderCell>Adresse IP</TableHeaderCell>
                 <TableHeaderCell>Processeur</TableHeaderCell>
                 <TableHeaderCell>Office</TableHeaderCell>
-                <TableHeaderCell>Sauvegarde</TableHeaderCell>
                 <TableHeaderCell>Employé</TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
@@ -266,7 +351,6 @@ function EquipementList() {
                   <TableCell>{equipement.ip_address || 'N/A'}</TableCell>
                   <TableCell>{equipement.processor || 'N/A'}</TableCell>
                   <TableCell>{equipement.office_version || 'N/A'}</TableCell>
-                  <TableCell>{equipement.backup_enabled ? 'Oui' : 'Non'}</TableCell>
                   <TableCell>{getUserInfo(equipement.employer)}</TableCell>
                   <TableCell>
                     <ActionButton onClick={() => handleEdit(equipement.id)}>
@@ -284,7 +368,7 @@ function EquipementList() {
               ))}
               {(!Array.isArray(equipements) || equipements.length === 0) && !loading && (
                 <TableRow>
-                  <TableCell colSpan="13" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <TableCell colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>
                     Aucun équipement trouvé
                   </TableCell>
                 </TableRow>

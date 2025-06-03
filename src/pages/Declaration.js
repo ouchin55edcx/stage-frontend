@@ -3,8 +3,10 @@ import MenuEmploye from '../pages/MenuEmploye';
 import { createDeclaration, fetchMyDeclarations, updateDeclaration, deleteDeclaration } from '../services/declaration';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrash, faSpinner, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { useNotifications } from '../contexts/NotificationContext';
 
 export default function Declaration() {
+  const { showSuccess, showError, showConfirmation } = useNotifications();
   const [formData, setFormData] = useState({ issue_title: '', description: '' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,15 +89,20 @@ export default function Declaration() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette déclaration ?')) {
+    const confirmed = await showConfirmation(
+      'Supprimer la déclaration',
+      'Êtes-vous sûr de vouloir supprimer cette déclaration ? Cette action est irréversible.'
+    );
+
+    if (confirmed) {
       setActionLoading(id);
       try {
         await deleteDeclaration(id);
-        setMessage('✅ Déclaration supprimée avec succès !');
+        showSuccess('Déclaration supprimée avec succès !');
         await fetchEmployerDeclarations();
       } catch (err) {
         console.error('Error deleting declaration:', err);
-        setMessage(`❌ Erreur lors de la suppression: ${err.message}`);
+        showError(`Erreur lors de la suppression: ${err.message}`);
       } finally {
         setActionLoading(null);
       }

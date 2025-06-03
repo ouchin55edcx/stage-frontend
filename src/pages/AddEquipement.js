@@ -3,6 +3,7 @@ import { createEquipment } from '../services/equipment';
 import { fetchEmployers } from '../services/employer';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const EquipementForm = styled.div`
   max-width: 1000px;
@@ -124,6 +125,7 @@ const LoadingMessage = styled.div`
 
 function AddEquipement() {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotifications();
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -135,7 +137,7 @@ function AddEquipement() {
     ip_address: '',
     processor: '',
     office_version: '',
-    backup_enabled: true,
+    backup_enabled: false,
     employer_id: ''
   });
 
@@ -227,10 +229,11 @@ function AddEquipement() {
 
     try {
       await createEquipment(formData);
-      alert("Equipment added successfully!");
-      navigate('/equipments'); // Redirect to equipment list
+      showSuccess("Équipement ajouté avec succès !");
+      navigate('/admin/equipements/list'); // Redirect to equipment list
     } catch (error) {
       setErrorMessage(error.message || "Error adding equipment");
+      showError(`Erreur lors de l'ajout: ${error.message || "Une erreur est survenue"}`);
       console.error('Error adding equipment:', error);
     } finally {
       setIsLoading(false);

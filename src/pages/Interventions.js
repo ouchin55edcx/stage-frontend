@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Menu from './Menu';
 import { createIntervention } from '../services/intervention';
 import { getAllEquipments } from '../services/equipment';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const InterventionsForm = () => {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotifications();
   const [date, setDate] = useState('');
   const [technician_name, setTechnicianName] = useState('');
   const [note, setNote] = useState('');
@@ -79,11 +81,12 @@ const InterventionsForm = () => {
       await createIntervention(interventionData);
 
       // Rediriger vers la liste des interventions après succès
-      alert("Intervention enregistrée avec succès !");
+      showSuccess("Intervention enregistrée avec succès !");
       navigate('/admin/interventions/list');
     } catch (err) {
       console.error('Erreur lors de l\'enregistrement de l\'intervention:', err);
       setError(err.message || 'Une erreur est survenue lors de l\'enregistrement de l\'intervention.');
+      showError(err.message || 'Une erreur est survenue lors de l\'enregistrement de l\'intervention.');
     } finally {
       setLoading(false);
     }

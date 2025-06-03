@@ -4,6 +4,7 @@ import { FaEdit, FaTrash, FaPlus, FaSearch, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import Menu from './Menu';
 import { fetchLicenses, createLicense, deleteLicense } from '../services/license';
+import { useNotifications } from '../contexts/NotificationContext';
 
 // Styled Components
 const Container = styled.div`
@@ -229,6 +230,7 @@ const ErrorMessage = styled.div`
 `;
 
 const LicenseManagement = () => {
+  const { showSuccess, showError, showConfirmation } = useNotifications();
   const [licenses, setLicenses] = useState([]);
   const [filteredLicenses, setFilteredLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -285,14 +287,19 @@ const LicenseManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette licence ?')) {
+    const confirmed = await showConfirmation(
+      'Supprimer la licence',
+      'Êtes-vous sûr de vouloir supprimer cette licence ? Cette action est irréversible.'
+    );
+
+    if (confirmed) {
       try {
         await deleteLicense(id);
         setLicenses(licenses.filter(license => license.id !== id));
-        alert('Licence supprimée avec succès !');
+        showSuccess('Licence supprimée avec succès !');
       } catch (err) {
         console.error('Error deleting license:', err);
-        alert('Erreur lors de la suppression: ' + err.message);
+        showError('Erreur lors de la suppression: ' + err.message);
       }
     }
   };
@@ -325,10 +332,11 @@ const LicenseManagement = () => {
         expiration_date: ''
       });
       fetchLicenseData(); // Refresh the list
-      alert('Licence ajoutée avec succès !');
+      showSuccess('Licence ajoutée avec succès !');
     } catch (err) {
       console.error('Error adding license:', err);
       setFormError(err.message || "Erreur lors de l'ajout de la licence");
+      showError(err.message || "Erreur lors de l'ajout de la licence");
     } finally {
       setSubmitting(false);
     }

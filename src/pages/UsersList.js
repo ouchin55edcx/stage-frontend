@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Menu from './Menu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faToggleOn, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faToggleOn } from '@fortawesome/free-solid-svg-icons';
 import { fetchEmployers, toggleEmployerStatus } from '../services/employer';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const Container = styled.div`
   display: flex;
@@ -73,23 +74,7 @@ const ActionButton = styled.button`
   }
 `;
 
-const AddButton = styled.button`
-  background: linear-gradient(45deg, #4A90E2, #1D3557); /* Bleu moderne */
-  color: white;
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-bottom: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: transform 0.3s ease;
 
-  &:hover {
-    transform: translateY(-2px);
-  }
-`;
 
 const StatusBadge = styled.span`
   padding: 0.5rem 1rem;
@@ -124,6 +109,7 @@ const ToggleButton = styled.button`
 function UsersList() {
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
+  const { showError } = useNotifications();
 
   useEffect(() => {
     const loadEmployers = async () => {
@@ -143,7 +129,7 @@ function UsersList() {
         );
       } catch (err) {
         console.error('Erreur lors du chargement des utilisateurs:', err);
-        alert('Erreur lors du chargement des utilisateurs');
+        showError('Erreur lors du chargement des utilisateurs');
       }
     };
     loadEmployers();
@@ -163,7 +149,7 @@ function UsersList() {
       }
     } catch (error) {
       console.error('Erreur lors du changement de statut:', error);
-      alert('Erreur lors du changement de statut de l\'utilisateur');
+      showError('Erreur lors du changement de statut de l\'utilisateur');
     }
   };
 
@@ -176,9 +162,7 @@ function UsersList() {
       <Menu notifications={[]} />
       <MainContent>
         <Title>Liste des utilisateurs</Title>
-        <AddButton onClick={() => navigate('/admin/users/add')}>
-          <FontAwesomeIcon icon={faPlus} /> Ajouter un utilisateur
-        </AddButton>
+
         <Table>
           <thead>
             <tr>

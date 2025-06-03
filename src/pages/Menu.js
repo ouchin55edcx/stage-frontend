@@ -159,10 +159,6 @@ const Menu = ({ notifications = [] }) => {
               <span style={{...styles.icon, width: '16px'}}><FontAwesomeIcon icon={faServer} size="sm" /></span>
               Ajouter service
             </Link>
-            <Link to="/admin/services/list" style={styles.subItem}>
-              <span style={{...styles.icon, width: '16px'}}><FontAwesomeIcon icon={faList} size="sm" /></span>
-              Liste des services
-            </Link>
           </div>
         )}
 
@@ -272,15 +268,7 @@ const Menu = ({ notifications = [] }) => {
           }}>
             <Link to="/admin/licences" style={styles.subItem}>
               <span style={{...styles.icon, width: '16px'}}><FontAwesomeIcon icon={faKey} size="sm" /></span>
-              Ajouter licence
-            </Link>
-            <Link to="/admin/licences/list" style={styles.subItem}>
-              <span style={{...styles.icon, width: '16px'}}><FontAwesomeIcon icon={faList} size="sm" /></span>
-              Liste des licences
-            </Link>
-            <Link to="/admin/licences/management" style={styles.subItem}>
-              <span style={{...styles.icon, width: '16px'}}><FontAwesomeIcon icon={faKey} size="sm" /></span>
-              Gestion des licences
+              Gestion des licences 
             </Link>
           </div>
         )}
