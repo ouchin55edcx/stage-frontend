@@ -333,10 +333,18 @@ function Notifications() {
                     <FontAwesomeIcon icon={faUser} />
                     Informations de l'employé
                   </EmployerHeader>
+                  
+                  {/* Declaration metadata */}
+                  <InfoRow>
+                    <DetailIcon icon={faCalendarAlt} />
+                    <span>Déclaré le: {formatDate(declaration.created_at)}</span>
+                  </InfoRow>
+            
+                  
                   <EmployerDetails>
                     <EmployerDetail>
                       <DetailIcon icon={faUser} />
-                      <span>{declaration.employer.full_name}</span>
+                      <span>{declaration.employer.user.full_name}</span>
                     </EmployerDetail>
 
                     {declaration.employer.email && (
