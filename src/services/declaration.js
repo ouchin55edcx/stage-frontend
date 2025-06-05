@@ -210,3 +210,24 @@ export const rejectDeclaration = async (id, adminComment = "Insufficient informa
     }
   }
 };
+
+/**
+ * Get count of pending declarations (admin only)
+ * @returns {Promise<number>} Count of declarations with 'pending' status
+ */
+export const getPendingDeclarationsCount = async () => {
+  try {
+    const response = await api.get('/all-declarations');
+    const declarations = response.data.data || [];
+
+    // Count declarations with 'pending' status or no status (default is pending)
+    const pendingCount = declarations.filter(declaration =>
+      !declaration.status || declaration.status === 'pending'
+    ).length;
+
+    return pendingCount;
+  } catch (error) {
+    console.error('Error fetching pending declarations count:', error);
+    return 0; // Return 0 if there's an error to avoid breaking the UI
+  }
+};

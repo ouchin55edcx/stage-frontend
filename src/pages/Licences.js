@@ -1,10 +1,12 @@
 // src/pages/Licences.js
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUser } from 'react-icons/fa';
 import Menu from './Menu';
 import Modal from '../components/Modal';
 import { createLicense, fetchLicenses, getLicenseById, updateLicense, deleteLicense } from '../services/license';
+import { fetchEmployers } from '../services/employer';
+import { getAllEquipments } from '../services/equipment';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../contexts/NotificationContext';
 
@@ -128,6 +130,22 @@ const Input = styled.input`
   outline: none;
 `;
 
+const Select = styled.select`
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #1E90FF;
+  background-color: #F4F7FF;
+  color: #333333;
+  outline: none;
+  cursor: pointer;
+
+  option {
+    background-color: #FFFFFF;
+    color: #333333;
+  }
+`;
+
 const SubmitButton = styled.button`
   width: 100%;
   padding: 0.75rem;
@@ -165,13 +183,23 @@ const Licences = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // State for employers list
+  const [employers, setEmployers] = useState([]);
+  const [employersLoading, setEmployersLoading] = useState(false);
+
+  // State for equipments list
+  const [equipments, setEquipments] = useState([]);
+  const [equipmentsLoading, setEquipmentsLoading] = useState(false);
+
   // State for add modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     type: '',
     key: '',
-    expiration_date: ''
+    expiration_date: '',
+    user_id: '',
+    equipment_id: ''
   });
 
   // State for edit modal
@@ -180,7 +208,7 @@ const Licences = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // Fetch licenses on component mount
+  // Fetch licenses and employers on component mount
   useEffect(() => {
     const fetchLicenseData = async () => {
       try {
@@ -195,7 +223,37 @@ const Licences = () => {
       }
     };
 
+    const fetchEmployersData = async () => {
+      try {
+        setEmployersLoading(true);
+        const data = await fetchEmployers();
+        // Filter only users with 'employer' role
+        const employerUsers = data.filter(user => user.role === 'employer' || !user.role);
+        setEmployers(employerUsers);
+      } catch (err) {
+        console.error('Error fetching employers:', err);
+        // Don't show error for employers as it's optional
+      } finally {
+        setEmployersLoading(false);
+      }
+    };
+
+    const fetchEquipmentsData = async () => {
+      try {
+        setEquipmentsLoading(true);
+        const data = await getAllEquipments();
+        setEquipments(data);
+      } catch (err) {
+        console.error('Error fetching equipments:', err);
+        // Don't show error for equipments as it's optional
+      } finally {
+        setEquipmentsLoading(false);
+      }
+    };
+
     fetchLicenseData();
+    fetchEmployersData();
+    fetchEquipmentsData();
   }, []);
 
   // Format date for display
@@ -227,7 +285,9 @@ const Licences = () => {
         name: '',
         type: '',
         key: '',
-        expiration_date: ''
+        expiration_date: '',
+        user_id: '',
+        equipment_id: ''
       });
 
       // Refresh the licenses list
@@ -329,6 +389,7 @@ const Licences = () => {
                   <TableHeaderCell>Type</TableHeaderCell>
                   <TableHeaderCell>Clé</TableHeaderCell>
                   <TableHeaderCell>Date d'expiration</TableHeaderCell>
+                  <TableHeaderCell>Équipement</TableHeaderCell>
                   <TableHeaderCell>Actions</TableHeaderCell>
                 </TableRow>
               </TableHeader>
@@ -336,25 +397,41 @@ const Licences = () => {
               <tbody>
                 {licenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan="5" style={{ textAlign: 'center' }}>Aucune licence trouvée</TableCell>
+                    <TableCell colSpan="7" style={{ textAlign: 'center' }}>Aucune licence trouvée</TableCell>
                   </TableRow>
                 ) : (
-                  licenses.map((license) => (
-                    <TableRow key={license.id}>
-                      <TableCell>{license.name}</TableCell>
-                      <TableCell>{license.type}</TableCell>
-                      <TableCell>{license.key}</TableCell>
-                      <TableCell>{formatDate(license.expiration_date)}</TableCell>
-                      <TableCell>
-                        <ActionButton onClick={() => handleEdit(license.id)}>
-                          <FaEdit />
-                        </ActionButton>
-                        <ActionButton delete onClick={() => handleDelete(license.id)}>
-                          <FaTrash />
-                        </ActionButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  licenses.map((license) => {
+                    // Find the assigned user and equipment
+                    const assignedUser = employers.find(emp => emp.id === license.user_id);
+                    const assignedEquipment = equipments.find(eq => eq.id === license.equipment_id);
+
+                    return (
+                      <TableRow key={license.id}>
+                        <TableCell>{license.name}</TableCell>
+                        <TableCell>{license.type}</TableCell>
+                        <TableCell>{license.key}</TableCell>
+                        <TableCell>{formatDate(license.expiration_date)}</TableCell>
+                        <TableCell>
+                          {assignedEquipment ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              🖥️ {assignedEquipment.name || 'Sans nom'}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#999', fontStyle: 'italic' }}>Non assigné</span>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell>
+                          <ActionButton onClick={() => handleEdit(license.id)}>
+                            <FaEdit />
+                          </ActionButton>
+                          <ActionButton delete onClick={() => handleDelete(license.id)}>
+                            <FaTrash />
+                          </ActionButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </tbody>
             </Table>
@@ -414,6 +491,31 @@ const Licences = () => {
               required
             />
           </FormGroup>
+
+          <FormGroup>
+            <Label>Équipement :</Label>
+            <Select
+              name="equipment_id"
+              value={formData.equipment_id}
+              onChange={handleChange}
+              disabled={equipmentsLoading}
+              required
+            >
+              <option value="">Sélectionner un équipement</option>
+              {equipments.map((equipment) => (
+                <option key={equipment.id} value={equipment.id}>
+                  🖥️ {equipment.name || 'Sans nom'} - {equipment.type || 'N/A'} {equipment.serial_number ? `(${equipment.serial_number})` : ''}
+                </option>
+              ))}
+            </Select>
+            {equipmentsLoading && (
+              <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                Chargement des équipements...
+              </div>
+            )}
+          </FormGroup>
+
+
 
           <SubmitButton
             type="submit"
@@ -476,6 +578,29 @@ const Licences = () => {
                 onChange={handleEditChange}
                 required
               />
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Équipement :</Label>
+              <Select
+                name="equipment_id"
+                value={editLicense.equipment_id || ''}
+                onChange={handleEditChange}
+                disabled={equipmentsLoading}
+                required
+              >
+                <option value="">Sélectionner un équipement</option>
+                {equipments.map((equipment) => (
+                  <option key={equipment.id} value={equipment.id}>
+                    🖥️ {equipment.name || 'Sans nom'} - {equipment.type || 'N/A'} {equipment.serial_number ? `(${equipment.serial_number})` : ''}
+                  </option>
+                ))}
+              </Select>
+              {equipmentsLoading && (
+                <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                  Chargement des équipements...
+                </div>
+              )}
             </FormGroup>
 
             <SubmitButton

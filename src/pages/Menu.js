@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -6,6 +6,7 @@ import {
   faChartPie, faCog, faSignOutAlt, faBoxes, faCalendarAlt, faList, faKey, faWrench,
   faBell
 } from '@fortawesome/free-solid-svg-icons';
+import { getPendingDeclarationsCount } from '../services/declaration';
 
 const Menu = ({ notifications = [] }) => {
   const [openSections, setOpenSections] = useState({
@@ -17,9 +18,31 @@ const Menu = ({ notifications = [] }) => {
     maintenance: false
   });
 
+  const [pendingDeclarationsCount, setPendingDeclarationsCount] = useState(0);
+
   const toggleSection = (section) => {
     setOpenSections({ ...openSections, [section]: !openSections[section] });
   };
+
+  // Fetch pending declarations count on component mount and refresh periodically
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const count = await getPendingDeclarationsCount();
+        setPendingDeclarationsCount(count);
+      } catch (error) {
+        console.error('Error fetching pending declarations count:', error);
+        setPendingDeclarationsCount(0);
+      }
+    };
+
+    fetchPendingCount();
+
+    // Set up interval to refresh count every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const styles = {
     sidebar: {
@@ -92,11 +115,53 @@ const Menu = ({ notifications = [] }) => {
       color: '#e0f2fe',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
       border: '1px solid rgba(255, 255, 255, 0.05)'
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: '-8px',
+      right: '-8px',
+      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+      color: 'white',
+      borderRadius: '50%',
+      width: '24px',
+      height: '24px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '0.75rem',
+      fontWeight: '700',
+      boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
+      border: '2px solid #1e293b',
+      animation: 'pulse 2s infinite'
+    },
+    notificationMenuItemContainer: {
+      position: 'relative',
+      display: 'inline-block',
+      width: '100%'
     }
   };
 
   return (
-    <div style={styles.sidebar}>
+    <>
+      <style>
+        {`
+          @keyframes pulse {
+            0% {
+              transform: scale(1);
+              opacity: 1;
+            }
+            50% {
+              transform: scale(1.1);
+              opacity: 0.8;
+            }
+            100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
+      <div style={styles.sidebar}>
       <div style={{
         textAlign: 'center',
         marginBottom: '2.5rem',
@@ -273,9 +338,16 @@ const Menu = ({ notifications = [] }) => {
           </div>
         )}
 
-        <Link to="/notifications" style={styles.menuItem}>
-          <span style={styles.icon}><FontAwesomeIcon icon={faBell} /></span>Notifications
-        </Link>
+        <div style={styles.notificationMenuItemContainer}>
+          <Link to="/notifications" style={styles.menuItem}>
+            <span style={styles.icon}><FontAwesomeIcon icon={faBell} /></span>Notifications
+          </Link>
+          {pendingDeclarationsCount > 0 && (
+            <div style={styles.notificationBadge}>
+              {pendingDeclarationsCount > 99 ? '99+' : pendingDeclarationsCount}
+            </div>
+          )}
+        </div>
 
         <Link to="/admin/settings" style={styles.menuItem}>
           <span style={styles.icon}><FontAwesomeIcon icon={faCog} /></span>Paramètres
@@ -318,7 +390,8 @@ const Menu = ({ notifications = [] }) => {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

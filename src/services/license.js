@@ -61,6 +61,12 @@ export const getLicenseById = async (id) => {
 /**
  * Create a new license
  * @param {Object} licenseData - The license data
+ * @param {string} licenseData.name - License name
+ * @param {string} licenseData.type - License type
+ * @param {string} licenseData.key - License key
+ * @param {string} licenseData.expiration_date - License expiration date
+ * @param {number} [licenseData.equipment_id] - Equipment ID (optional)
+ * @param {number} [licenseData.user_id] - User ID for employer assignment (optional)
  * @returns {Promise<Object>} Created license
  */
 export const createLicense = async (licenseData) => {

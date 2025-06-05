@@ -1,18 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import Menu from './Menu';
 import { getAllEquipments, createEquipment } from '../services/equipment';
 import { fetchEmployers } from '../services/employer';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../contexts/NotificationContext';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faDesktop,
+  faLaptop,
+  faPrint,
+  faServer,
+  faNetworkWired,
+  faTag,
+  faBarcode,
+  faUser,
+  faSpinner,
+  faPlus,
+  faWifi,
+  faMicrochip,
+  faFileWord
+} from '@fortawesome/free-solid-svg-icons';
 
-// Définition du CSS dans un composant styled-components
+// Animations
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const pulse = keyframes`
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+`;
+
+const slideIn = keyframes`
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+`;
+
+// Styled Components
 const Container = styled.div`
   display: flex;
   min-height: 100vh;
-  background-color: #f0f4f8; /* Fond blanc/bleu clair */
-  color: #333333; /* Texte gris foncé */
-  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  color: #333;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `;
 
 const MainContent = styled.div`
@@ -20,97 +71,291 @@ const MainContent = styled.div`
   padding: 2rem;
   flex: 1;
   min-width: calc(100vw - 250px);
+  animation: ${fadeIn} 0.6s ease-out;
+
+  @media (max-width: 768px) {
+    margin-left: 0;
+    padding: 1rem;
+  }
 `;
 
 const EquipementForm = styled.div`
-  background: #ffffff; /* Fond blanc pour le formulaire */
-  padding: 2rem;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 174, 239, 0.2); /* Teinte bleu clair pour l'ombre */
-  max-width: 800px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 2.5rem;
+  border-radius: 24px;
+  box-shadow:
+    0 20px 40px rgba(0, 174, 239, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  max-width: 1000px;
   margin: 0 auto 3rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #00AEEF, #0066CC, #00AEEF);
+    background-size: 200% 100%;
+    animation: ${pulse} 3s ease-in-out infinite;
+  }
+
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
 `;
 
 const Title = styled.h2`
-  font-size: 2rem;
-  font-weight: 700;
-  background: linear-gradient(45deg, #00AEEF, #0066CC); /* Dégradé de bleu */
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00AEEF 0%, #0066CC 50%, #004499 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 2rem;
+  background-clip: text;
+  margin-bottom: 2.5rem;
   text-align: center;
+  position: relative;
+  letter-spacing: -0.02em;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, #00AEEF, #0066CC);
+    border-radius: 2px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
 `;
 
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  animation: ${slideIn} 0.5s ease-out;
+  animation-delay: ${props => props.delay || '0s'};
+  animation-fill-mode: both;
 `;
 
 const Label = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #666666; /* Gris clair pour les labels */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 0.95rem;
+
+  svg {
+    color: #00AEEF;
+    font-size: 1.1rem;
+  }
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.8rem;
-  background: #f7f7f7; /* Fond très clair pour les champs de saisie */
-  color: #333333; /* Texte gris foncé */
-  border: 1px solid #cccccc; /* Bordure gris clair */
-  border-radius: 8px;
-  transition: all 0.3s ease;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #e2e8f0, #cbd5e1) border-box;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+  &::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+  }
 
   &:focus {
-    border-color: #00AEEF; /* Teinte de bleu clair */
+    border: 2px solid transparent;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #00AEEF, #0066CC) border-box;
+    box-shadow:
+      0 0 0 4px rgba(0, 174, 239, 0.1),
+      0 8px 16px -4px rgba(0, 174, 239, 0.2);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 174, 239, 0.2); /* Ombre légère en bleu clair */
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #f1f5f9;
+  }
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #e2e8f0, #cbd5e1) border-box;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+
+  &:focus {
+    border: 2px solid transparent;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #00AEEF, #0066CC) border-box;
+    box-shadow:
+      0 0 0 4px rgba(0, 174, 239, 0.1),
+      0 8px 16px -4px rgba(0, 174, 239, 0.2);
+    outline: none;
+    transform: translateY(-1px);
+  }
+
+  option {
+    padding: 0.5rem;
+    background: white;
+    color: #334155;
   }
 `;
 
 const Button = styled.button`
-  background: linear-gradient(45deg, #00AEEF, #0066CC); /* Dégradé de bleu */
+  padding: 1.25rem 2rem;
+  background: ${props => props.disabled
+    ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
+    : 'linear-gradient(135deg, #00AEEF 0%, #0066CC 100%)'};
   color: white;
-  padding: 1rem 2rem;
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  border-radius: 12px;
   font-weight: 600;
+  font-size: 1rem;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   width: 100%;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: ${props => props.disabled ? 0.7 : 1};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: ${props => props.disabled
+    ? 'none'
+    : '0 8px 16px -4px rgba(0, 174, 239, 0.4)'};
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
 
-  &:hover {
-    transform: ${props => props.disabled ? 'none' : 'translateY(-2px)'};
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0066CC 0%, #004499 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -8px rgba(0, 174, 239, 0.5);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
 const ErrorText = styled.div`
-  color: #e74c3c;
-  font-size: 12px;
-  margin-top: 5px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
   font-weight: 500;
+  border: 1px solid #fecaca;
+  box-shadow: 0 2px 4px -1px rgba(220, 38, 38, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &::before {
+    content: '⚠️';
+    font-size: 1rem;
+  }
 `;
 
 const Checkbox = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  }
 
   input {
-    width: auto;
+    width: 1.25rem;
+    height: 1.25rem;
     margin: 0;
+    cursor: pointer;
+    accent-color: #00AEEF;
   }
 
   label {
     margin: 0;
     display: inline;
+    cursor: pointer;
+    font-weight: 500;
+    color: #334155;
   }
 `;
 
@@ -233,6 +478,17 @@ function Equipements() {
     }
   };
 
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'PC': return faDesktop;
+      case 'Laptop': return faLaptop;
+      case 'Printer': return faPrint;
+      case 'Server': return faServer;
+      case 'Network': return faNetworkWired;
+      default: return faDesktop;
+    }
+  };
+
   return (
     <Container>
       <Menu notifications={[]} />
@@ -244,91 +500,100 @@ function Equipements() {
             <FormGrid>
               {/* Colonne de gauche */}
               <div>
-                <FormGroup>
-                  <Label>Nom</Label>
+                <FormGroup delay="0.1s">
+                  <Label>
+                    <FontAwesomeIcon icon={faTag} />
+                    Nom
+                  </Label>
                   <Input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    style={{ borderColor: errors.name ? '#e74c3c' : '#cccccc' }}
+                    placeholder="Entrez le nom de l'équipement"
                   />
                   {errors.name && <ErrorText>{errors.name}</ErrorText>}
                 </FormGroup>
-                <FormGroup>
-                  <Label>Type</Label>
-                  <select
+
+                <FormGroup delay="0.2s">
+                  <Label>
+                    <FontAwesomeIcon icon={formData.type ? getTypeIcon(formData.type) : faDesktop} />
+                    Type
+                  </Label>
+                  <Select
                     name="type"
                     value={formData.type}
                     onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.8rem',
-                      background: '#f7f7f7',
-                      color: '#333333',
-                      border: errors.type ? '1px solid #e74c3c' : '1px solid #cccccc',
-                      borderRadius: '8px'
-                    }}>
-                    <option value="">-- Sélectionner --</option>
-                    <option value="PC">PC</option>
-                    <option value="Laptop">Laptop</option>
-                    <option value="Printer">Imprimante</option>
-                    <option value="Scanner">Scanner</option>
-                    <option value="Server">Serveur</option>
-                    <option value="Network">Équipement réseau</option>
-                    <option value="Other">Autre</option>
-                  </select>
+                  >
+                    <option value="">-- Sélectionner un type --</option>
+                    <option value="PC">💻 PC</option>
+                    <option value="Laptop">💻 Laptop</option>
+                    <option value="Printer">🖨️ Imprimante</option>
+                    <option value="Scanner">📄 Scanner</option>
+                    <option value="Server">🖥️ Serveur</option>
+                    <option value="Network">🌐 Équipement réseau</option>
+                    <option value="Other">📦 Autre</option>
+                  </Select>
                   {errors.type && <ErrorText>{errors.type}</ErrorText>}
                 </FormGroup>
-                <FormGroup>
-                  <Label>État</Label>
-                  <select
+
+                <FormGroup delay="0.3s">
+                  <Label>
+                    <FontAwesomeIcon icon={faBarcode} />
+                    État
+                  </Label>
+                  <Select
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.8rem',
-                      background: '#f7f7f7',
-                      color: '#333333',
-                      border: '1px solid #cccccc',
-                      borderRadius: '8px'
-                    }}>
-                    <option value="active">Actif</option>
-                    <option value="on_hold">En attente</option>
-                    <option value="in_progress">En cours</option>
-                  </select>
+                  >
+                    <option value="active">✅ Actif</option>
+                    <option value="on_hold">⏸️ En attente</option>
+                    <option value="in_progress">🔄 En cours</option>
+                  </Select>
                 </FormGroup>
-                <FormGroup>
-                  <Label>Numéro de Série</Label>
+
+                <FormGroup delay="0.4s">
+                  <Label>
+                    <FontAwesomeIcon icon={faBarcode} />
+                    Numéro de Série
+                  </Label>
                   <Input
                     type="text"
                     name="serial_number"
                     value={formData.serial_number}
                     onChange={handleChange}
-                    style={{ borderColor: errors.serial_number ? '#e74c3c' : '#cccccc' }}
+                    placeholder="ex: SN123456789"
                   />
                   {errors.serial_number && <ErrorText>{errors.serial_number}</ErrorText>}
                 </FormGroup>
-                <FormGroup>
-                  <Label>Marque</Label>
+
+                <FormGroup delay="0.5s">
+                  <Label>
+                    <FontAwesomeIcon icon={faTag} />
+                    Marque
+                  </Label>
                   <Input
                     type="text"
                     name="brand"
                     value={formData.brand}
                     onChange={handleChange}
-                    style={{ borderColor: errors.brand ? '#e74c3c' : '#cccccc' }}
+                    placeholder="ex: Dell, HP, Lenovo"
                   />
                   {errors.brand && <ErrorText>{errors.brand}</ErrorText>}
                 </FormGroup>
-                <FormGroup>
-                  <Label>Libellé</Label>
+
+                <FormGroup delay="0.6s">
+                  <Label>
+                    <FontAwesomeIcon icon={faTag} />
+                    Libellé
+                  </Label>
                   <Input
                     type="text"
                     name="label"
                     value={formData.label}
                     onChange={handleChange}
-                    style={{ borderColor: errors.label ? '#e74c3c' : '#cccccc' }}
+                    placeholder="Description courte de l'équipement"
                   />
                   {errors.label && <ErrorText>{errors.label}</ErrorText>}
                 </FormGroup>
@@ -336,92 +601,86 @@ function Equipements() {
 
               {/* Colonne de droite */}
               <div>
-                <FormGroup>
-                  <Label>NSC</Label>
+                <FormGroup delay="0.7s">
+                  <Label>
+                    <FontAwesomeIcon icon={faBarcode} />
+                    NSC
+                  </Label>
                   <Input
                     type="text"
                     name="nsc"
                     value={formData.nsc}
                     onChange={handleChange}
-                    style={{ borderColor: errors.nsc ? '#e74c3c' : '#cccccc' }}
+                    placeholder="Numéro de série constructeur"
                   />
                   {errors.nsc && <ErrorText>{errors.nsc}</ErrorText>}
                 </FormGroup>
-                <FormGroup>
-                  <Label>Adresse IP</Label>
+
+                <FormGroup delay="0.8s">
+                  <Label>
+                    <FontAwesomeIcon icon={faWifi} />
+                    Adresse IP
+                  </Label>
                   <Input
                     type="text"
                     name="ip_address"
                     value={formData.ip_address}
                     onChange={handleChange}
                     placeholder="ex: 192.168.1.100"
-                    style={{ borderColor: errors.ip_address ? '#e74c3c' : '#cccccc' }}
                   />
                   {errors.ip_address && <ErrorText>{errors.ip_address}</ErrorText>}
                 </FormGroup>
-                <FormGroup>
-                  <Label>Processeur</Label>
+
+                <FormGroup delay="0.9s">
+                  <Label>
+                    <FontAwesomeIcon icon={faMicrochip} />
+                    Processeur
+                  </Label>
                   <Input
                     type="text"
                     name="processor"
                     value={formData.processor}
                     onChange={handleChange}
-                    placeholder="ex: Intel i7"
+                    placeholder="ex: Intel Core i7-12700K"
                   />
                 </FormGroup>
-                <FormGroup>
-                  <Label>Version Office</Label>
+
+                <FormGroup delay="1.0s">
+                  <Label>
+                    <FontAwesomeIcon icon={faFileWord} />
+                    Version Office
+                  </Label>
                   <Input
                     type="text"
                     name="office_version"
                     value={formData.office_version}
                     onChange={handleChange}
-                    placeholder="ex: Office 365"
+                    placeholder="ex: Microsoft Office 365"
                   />
                 </FormGroup>
 
-                {/* Sauvegarde activée checkbox hidden for new equipment */}
-                {/*
-                <FormGroup>
-                  <Checkbox>
-                    <input
-                      type="checkbox"
-                      id="backup_enabled"
-                      name="backup_enabled"
-                      checked={formData.backup_enabled}
-                      onChange={handleChange}
-                    />
-                    <Label htmlFor="backup_enabled" style={{ marginBottom: 0 }}>Sauvegarde activée</Label>
-                  </Checkbox>
-                </FormGroup>
-                */}
-
                 {/* Sélection de l'utilisateur */}
-                <FormGroup>
-                  <Label>Utilisateur</Label>
-                  <select
+                <FormGroup delay="1.1s">
+                  <Label>
+                    <FontAwesomeIcon icon={faUser} />
+                    Utilisateur
+                  </Label>
+                  <Select
                     name="employer_id"
                     value={formData.employer_id}
                     onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.8rem',
-                      background: '#f7f7f7',
-                      color: '#333333',
-                      border: errors.employer_id ? '1px solid #e74c3c' : '1px solid #cccccc',
-                      borderRadius: '8px'
-                    }}>
+                  >
                     <option value="">Sélectionner un utilisateur</option>
                     {employers && employers.length > 0 ? (
                       employers.map((employer) => (
                         <option key={employer.id} value={employer.id}>
-                          {employer.full_name || 'Utilisateur sans nom'}
+                          👤 {employer.full_name || 'Utilisateur sans nom'}
                         </option>
                       ))
                     ) : (
                       <option value="" disabled>Chargement des utilisateurs...</option>
                     )}
-                  </select>
+                  </Select>
                   {errors.employer_id && <ErrorText>{errors.employer_id}</ErrorText>}
                 </FormGroup>
               </div>
@@ -429,7 +688,17 @@ function Equipements() {
 
             {/* Bouton d'ajout */}
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Ajout en cours...' : 'Ajouter l\'équipement'}
+              {isSubmitting ? (
+                <LoadingSpinner>
+                  <FontAwesomeIcon icon={faSpinner} />
+                  Ajout en cours...
+                </LoadingSpinner>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faPlus} />
+                  Ajouter l'équipement
+                </>
+              )}
             </Button>
           </form>
         </EquipementForm>
