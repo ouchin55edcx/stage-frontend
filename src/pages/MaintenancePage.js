@@ -573,6 +573,7 @@ const MaintenancePage = () => {
   const [monthMaintenances, setMonthMaintenances] = useState([]);
   const [filterDate, setFilterDate] = useState('');
   const [isFiltering, setIsFiltering] = useState(false);
+  const [filterType, setFilterType] = useState('scheduled_date'); // 'scheduled_date' or 'next_maintenance_date'
   const [newMaintenance, setNewMaintenance] = useState({
     equipment_id: '',
     maintenance_type: '',
@@ -611,13 +612,14 @@ const MaintenancePage = () => {
         console.log('All maintenances:', allMaintenances);
 
         const filtered = allMaintenances.filter(maintenance => {
-          // Normalize dates for comparison
-          const normalizedMaintenanceDate = normalizeDate(maintenance.scheduled_date);
+          // Normalize dates for comparison based on filter type
+          const maintenanceDateField = filterType === 'next_maintenance_date' ? maintenance.next_maintenance_date : maintenance.scheduled_date;
+          const normalizedMaintenanceDate = normalizeDate(maintenanceDateField);
           const normalizedFilterDate = normalizeDate(formattedDate);
 
-          // Check if scheduled_date matches the filter date
+          // Check if the selected date field matches the filter date
           const matches = normalizedMaintenanceDate === normalizedFilterDate;
-          console.log(`Maintenance ${maintenance.id || 'unknown'}: ${maintenance.scheduled_date} (normalized: ${normalizedMaintenanceDate}) matches ${formattedDate} (normalized: ${normalizedFilterDate})? ${matches}`);
+          console.log(`Maintenance ${maintenance.id || 'unknown'}: ${maintenanceDateField} (normalized: ${normalizedMaintenanceDate}) matches ${formattedDate} (normalized: ${normalizedFilterDate})? ${matches}`);
           return matches;
         });
 
@@ -627,8 +629,10 @@ const MaintenancePage = () => {
       // Option 2: Fetch filtered maintenances from API
       else {
         console.log('Fetching filtered maintenances from API by calendar selection');
-        // Try to fetch with specific scheduled_date filter
-        const response = await getAllMaintenances({ scheduled_date: formattedDate });
+        // Try to fetch with specific filter based on filter type
+        const filterParam = {};
+        filterParam[filterType] = formattedDate;
+        const response = await getAllMaintenances(filterParam);
 
         if (Array.isArray(response) && response.length > 0) {
           console.log('Got filtered response from API:', response);
@@ -798,8 +802,8 @@ const MaintenancePage = () => {
     }
   };
 
-  // Apply filter by scheduled date
-  const applyScheduledDateFilter = async () => {
+  // Apply filter by date (scheduled_date or next_maintenance_date)
+  const applyDateFilter = async () => {
     setIsFiltering(true);
     setIsLoading(true);
 
@@ -811,19 +815,20 @@ const MaintenancePage = () => {
     }
 
     try {
-      console.log('Applying filter for scheduled date:', filterDate);
+      console.log(`Applying filter for ${filterType}:`, filterDate);
 
       // Option 1: Filter from already loaded maintenances
       if (allMaintenances.length > 0) {
         console.log('Filtering from loaded maintenances');
         const filtered = allMaintenances.filter(maintenance => {
-          // Normalize dates for comparison
-          const normalizedMaintenanceDate = normalizeDate(maintenance.scheduled_date);
+          // Normalize dates for comparison based on filter type
+          const maintenanceDateField = filterType === 'next_maintenance_date' ? maintenance.next_maintenance_date : maintenance.scheduled_date;
+          const normalizedMaintenanceDate = normalizeDate(maintenanceDateField);
           const normalizedFilterDate = normalizeDate(filterDate);
 
-          // Check if scheduled_date matches the filter date
+          // Check if the selected date field matches the filter date
           const matches = normalizedMaintenanceDate === normalizedFilterDate;
-          console.log(`Maintenance ${maintenance.id}: ${maintenance.scheduled_date} (normalized: ${normalizedMaintenanceDate}) matches ${filterDate} (normalized: ${normalizedFilterDate})? ${matches}`);
+          console.log(`Maintenance ${maintenance.id}: ${maintenanceDateField} (normalized: ${normalizedMaintenanceDate}) matches ${filterDate} (normalized: ${normalizedFilterDate})? ${matches}`);
           return matches;
         });
 
@@ -833,7 +838,9 @@ const MaintenancePage = () => {
       // Option 2: Fetch filtered maintenances from API
       else {
         console.log('Fetching filtered maintenances from API');
-        const response = await getAllMaintenances({ scheduled_date: filterDate });
+        const filterParam = {};
+        filterParam[filterType] = filterDate;
+        const response = await getAllMaintenances(filterParam);
 
         if (Array.isArray(response)) {
           setMaintenances(response);
@@ -1065,8 +1072,10 @@ const MaintenancePage = () => {
                 try {
                   console.log('Month navigation with active filter, new date:', formattedDate);
 
-                  // Try to fetch with specific scheduled_date filter
-                  const response = await getAllMaintenances({ scheduled_date: formattedDate });
+                  // Try to fetch with specific filter based on filter type
+                  const filterParam = {};
+                  filterParam[filterType] = formattedDate;
+                  const response = await getAllMaintenances(filterParam);
 
                   if (Array.isArray(response) && response.length > 0) {
                     console.log('Got filtered response from API:', response);
@@ -1129,8 +1138,10 @@ const MaintenancePage = () => {
                 try {
                   console.log('Month navigation with active filter, new date:', formattedDate);
 
-                  // Try to fetch with specific scheduled_date filter
-                  const response = await getAllMaintenances({ scheduled_date: formattedDate });
+                  // Try to fetch with specific filter based on filter type
+                  const filterParam = {};
+                  filterParam[filterType] = formattedDate;
+                  const response = await getAllMaintenances(filterParam);
 
                   if (Array.isArray(response) && response.length > 0) {
                     console.log('Got filtered response from API:', response);
@@ -1210,9 +1221,21 @@ const MaintenancePage = () => {
           <div className="header-actions">
             <div className="filter-container">
               <div className="filter-group">
-                <label htmlFor="filter-date">
+                <label htmlFor="filter-type">
                   <FontAwesomeIcon icon={faFilter} style={{ marginRight: '0.5rem' }} />
-                  Filtrer par Date Programmée :
+                  Type de Filtre :
+                </label>
+                <select
+                  id="filter-type"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="scheduled_date">Date Programmée</option>
+                  <option value="next_maintenance_date">Prochaine Maintenance</option>
+                </select>
+                <label htmlFor="filter-date">
+                  Date :
                 </label>
                 <input
                   type="date"
@@ -1223,7 +1246,7 @@ const MaintenancePage = () => {
                 />
                 <button
                   className="button secondary filter-button"
-                  onClick={applyScheduledDateFilter}
+                  onClick={applyDateFilter}
                   disabled={isLoading}
                 >
                   <FontAwesomeIcon icon={faSearch} style={{ marginRight: '0.5rem' }} />
@@ -1295,8 +1318,10 @@ const MaintenancePage = () => {
                         try {
                           console.log('Filter by Calendar button clicked, date:', formattedDate);
 
-                          // Try to fetch with specific scheduled_date filter
-                          const response = await getAllMaintenances({ scheduled_date: formattedDate });
+                          // Try to fetch with specific filter based on filter type
+                          const filterParam = {};
+                          filterParam[filterType] = formattedDate;
+                          const response = await getAllMaintenances(filterParam);
 
                           if (Array.isArray(response) && response.length > 0) {
                             console.log('Got filtered response from API:', response);
@@ -1349,7 +1374,7 @@ const MaintenancePage = () => {
               <div className="card-header">
                 <h2>
                   {isFiltering && filterDate
-                    ? `Maintenances Programmées pour le ${new Date(filterDate).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    ? `Maintenances ${filterType === 'next_maintenance_date' ? 'avec Prochaine Maintenance' : 'Programmées'} pour le ${new Date(filterDate).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}`
                     : isFiltering
                       ? 'Toutes les Maintenances'
                       : `Maintenances pour le ${date.toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}`
@@ -1372,7 +1397,7 @@ const MaintenancePage = () => {
                   <div className="empty-state">
                     <div className="empty-icon">📅</div>
                     {isFiltering && filterDate ? (
-                      <p>Aucune maintenance programmée pour le {new Date(filterDate).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}.</p>
+                      <p>Aucune maintenance {filterType === 'next_maintenance_date' ? 'avec prochaine maintenance' : 'programmée'} pour le {new Date(filterDate).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric', year: 'numeric' })}.</p>
                     ) : isFiltering ? (
                       <p>Aucun enregistrement de maintenance trouvé.</p>
                     ) : (
@@ -1417,6 +1442,14 @@ const MaintenancePage = () => {
                                 <span className="label">Programmée :</span>
                                 <span className="value">
                                   {new Date(maintenance.scheduled_date).toLocaleDateString('fr-FR')}
+                                </span>
+                              </div>
+                            )}
+                            {maintenance.next_maintenance_date && (
+                              <div className="info-row">
+                                <span className="label">Prochaine Maintenance :</span>
+                                <span className="value">
+                                  {new Date(maintenance.next_maintenance_date).toLocaleDateString('fr-FR')}
                                 </span>
                               </div>
                             )}
@@ -1989,11 +2022,16 @@ const MaintenancePage = () => {
           align-items: center;
         }
 
-        .filter-input {
+        .filter-input, .filter-select {
           padding: 0.5rem 0.75rem;
           border: 1px solid #cbd5e1;
           border-radius: 6px;
           font-size: 0.875rem;
+          background-color: white;
+        }
+
+        .filter-select {
+          min-width: 150px;
         }
 
         .filter-button {
