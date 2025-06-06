@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import Menu from './Menu';
 import { getEquipmentById, updateEquipment } from '../services/equipment';
 import { fetchEmployers } from '../services/employer';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const Container = styled.div`
   display: flex;
@@ -136,6 +137,7 @@ const Checkbox = styled.div`
 function EditEquipement() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotifications();
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -166,7 +168,7 @@ function EditEquipement() {
         if (equipmentData && equipmentData.data) {
           setFormData(equipmentData.data);
         } else {
-          alert('Équipement non trouvé');
+          showError('Équipement non trouvé');
           navigate('/admin/equipements/list');
         }
 
@@ -180,7 +182,7 @@ function EditEquipement() {
 
       } catch (error) {
         console.error('Error fetching data:', error);
-        alert(`Erreur: ${error.message || 'Une erreur est survenue lors du chargement des données'}`);
+        showError(`Erreur: ${error.message || 'Une erreur est survenue lors du chargement des données'}`);
       } finally {
         setLoading(false);
       }
@@ -246,11 +248,11 @@ function EditEquipement() {
       };
 
       await updateEquipment(id, equipmentData);
-      alert('Équipement modifié avec succès !');
+      showSuccess('Équipement modifié avec succès !');
       navigate('/admin/equipements/list');
     } catch (error) {
       console.error('Error updating equipment:', error);
-      alert(`Erreur: ${error.message || 'Une erreur est survenue lors de la modification'}`);
+      showError(`Erreur: ${error.message || 'Une erreur est survenue lors de la modification'}`);
     } finally {
       setIsSubmitting(false);
     }
