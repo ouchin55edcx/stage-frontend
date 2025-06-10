@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaEdit, FaTrashAlt, FaPlus } from 'react-icons/fa';
 import styled from 'styled-components';
 import Menu from './Menu';
-import { getAllMaintenances, deleteMaintenance } from '../services/maintenance';
+import Modal from '../components/Modal';
+import { getAllMaintenances, deleteMaintenance, getMaintenanceById, updateMaintenance } from '../services/maintenance';
+import { fetchInterventions } from '../services/intervention';
 
 const Container = styled.div`
   display: flex;
@@ -82,6 +84,19 @@ const MaintenanceListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingMaintenanceId, setEditingMaintenanceId] = useState(null);
+  const [editMaintenance, setEditMaintenance] = useState({
+    intervention_id: '',
+    maintenance_type: 'Preventive',
+    scheduled_date: '',
+    observations: '',
+    technician_id: ''
+  });
+  const [interventions, setInterventions] = useState([]);
+  const [editLoading, setEditLoading] = useState(false);
+
   const fetchMaintenances = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -123,8 +138,37 @@ const MaintenanceListPage = () => {
     setSelectedYear(parseInt(e.target.value));
   };
 
-  const handleEdit = (id) => {
-    navigate(`/admin/edit-maintenance/${id}`);
+  const handleEdit = async (id) => {
+    setEditingMaintenanceId(id);
+    setEditLoading(true);
+
+    try {
+      // Fetch intervention options
+      const interventionsData = await fetchInterventions();
+      setInterventions(Array.isArray(interventionsData) ? interventionsData : []);
+
+      if (id !== '0') {
+        // Fetch maintenance data
+        const maintenanceResponse = await getMaintenanceById(id);
+        setEditMaintenance(maintenanceResponse.data || maintenanceResponse);
+      } else {
+        // Example maintenance for demo purposes
+        setEditMaintenance({
+          intervention_id: '1',
+          maintenance_type: 'Preventive',
+          scheduled_date: '2025-05-10',
+          observations: 'No specific observations',
+          technician_id: '1'
+        });
+      }
+
+      setIsEditModalOpen(true);
+    } catch (error) {
+      console.error('Error loading maintenance data:', error);
+      alert('Error loading maintenance data.');
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -138,6 +182,53 @@ const MaintenanceListPage = () => {
         alert(`Error: ${error.message || 'An error occurred while deleting the maintenance record'}`);
       }
     }
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === 'intervention_id') {
+      // When intervention is selected, no need to set technician_id since we use technician_name from intervention
+      setEditMaintenance({
+        ...editMaintenance,
+        [name]: value
+      });
+    } else {
+      setEditMaintenance({
+        ...editMaintenance,
+        [name]: value
+      });
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (editingMaintenanceId === '0') {
+      alert("The example maintenance cannot be modified");
+      return;
+    }
+
+    try {
+      await updateMaintenance(editingMaintenanceId, editMaintenance);
+      alert('Maintenance updated successfully!');
+      setIsEditModalOpen(false);
+      fetchMaintenances(); // Refresh the list
+    } catch (error) {
+      console.error('Error updating maintenance:', error);
+      alert(`Error: ${error.message || 'An error occurred while updating maintenance'}`);
+    }
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingMaintenanceId(null);
+    setEditMaintenance({
+      intervention_id: '',
+      maintenance_type: 'Preventive',
+      scheduled_date: '',
+      observations: '',
+      technician_id: ''
+    });
   };
 
   return (
@@ -239,6 +330,192 @@ const MaintenanceListPage = () => {
             </table>
           </div>
         )}
+
+        {/* Edit Maintenance Modal */}
+        <Modal
+          isOpen={isEditModalOpen}
+          onClose={closeEditModal}
+          title="Edit Maintenance"
+        >
+          {editLoading ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
+          ) : (
+            <form onSubmit={handleEditSubmit}>
+              <div className="form-group">
+                <label>Intervention:</label>
+                <select
+                  name="intervention_id"
+                  value={editMaintenance.intervention_id}
+                  onChange={handleEditChange}
+                  disabled={editingMaintenanceId === '0'}
+                  required
+                >
+                  <option value="">Select intervention</option>
+                  {interventions.map((intervention) => (
+                    <option key={intervention.id} value={intervention.id}>
+                      {intervention.equipment?.name || 'Unknown Equipment'} - {intervention.technician_name} ({new Date(intervention.date).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Maintenance Type:</label>
+                <select
+                  name="maintenance_type"
+                  value={editMaintenance.maintenance_type}
+                  onChange={handleEditChange}
+                  disabled={editingMaintenanceId === '0'}
+                  required
+                >
+                  <option value="Preventive">Preventive</option>
+                  <option value="Corrective">Corrective</option>
+                  <option value="Predictive">Predictive</option>
+                  <option value="Condition-based">Condition-based</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Scheduled Date:</label>
+                <input
+                  type="date"
+                  name="scheduled_date"
+                  value={editMaintenance.scheduled_date}
+                  onChange={handleEditChange}
+                  disabled={editingMaintenanceId === '0'}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Observations:</label>
+                <textarea
+                  name="observations"
+                  value={editMaintenance.observations || ''}
+                  onChange={handleEditChange}
+                  disabled={editingMaintenanceId === '0'}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Technician:</label>
+                <input
+                  name="technician_display"
+                  value={
+                    editMaintenance.intervention_id
+                      ? interventions.find(i => i.id === parseInt(editMaintenance.intervention_id))?.technician_name || 'Unknown Technician'
+                      : 'Select an intervention first'
+                  }
+                  readOnly
+                  style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                />
+              </div>
+
+              <div className="button-group">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={closeEditModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="save-btn"
+                  disabled={editingMaintenanceId === '0'}
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          )}
+        </Modal>
+
+        <style jsx="true">{`
+          .form-group {
+            margin-bottom: 20px;
+          }
+
+          .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1e3a8a;
+            font-weight: 600;
+          }
+
+          .form-group input,
+          .form-group select,
+          .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 16px;
+            font-family: inherit;
+            box-sizing: border-box;
+          }
+
+          .form-group input:focus,
+          .form-group select:focus,
+          .form-group textarea:focus {
+            outline: none;
+            border-color: #1e3a8a;
+          }
+
+          .form-group input:disabled,
+          .form-group select:disabled,
+          .form-group textarea:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+          }
+
+          .form-group textarea {
+            height: 100px;
+            resize: vertical;
+          }
+
+          .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: flex-end;
+          }
+
+          .button-group button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+          }
+
+          .save-btn {
+            background: #1e3a8a;
+            color: white;
+          }
+
+          .save-btn:hover:not(:disabled) {
+            background: #2c4999;
+          }
+
+          .save-btn:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+          }
+
+          .cancel-btn {
+            background: #e5e7eb;
+            color: #1e3a8a;
+          }
+
+          .cancel-btn:hover {
+            background: #d1d5db;
+          }
+        `}</style>
       </MainContent>
     </Container>
   );
